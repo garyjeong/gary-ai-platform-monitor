@@ -101,13 +101,19 @@ bash scripts/uninstall-login-item.sh
 
 See [docs/packaging.md](./docs/packaging.md).
 
+**v0.3.0 release (unsigned arm64 DMG):**  
+https://github.com/garyjeong/gary-ai-platform-monitor/releases/tag/v0.3.0
+
 ```bash
-npm run dist:mac          # unsigned DMG → apps/menubar/release/
-# Homebrew cask template: homebrew/Casks/gary-ai-platform-monitor.rb
-# GitHub Actions: tag v* → builds release assets
+# Homebrew (from repo root)
+brew install --cask ./homebrew/Casks/gary-ai-platform-monitor.rb
+
+# Or rebuild DMG locally
+npm run dist:mac   # → apps/menubar/release/
 ```
 
-**Notarization** needs your Apple Developer ID (documented; not runnable without secrets).
+Gatekeeper may block unsigned apps: right-click → **Open**.  
+**Notarization** needs your Apple Developer ID (see packaging docs).
 
 ## Layout
 

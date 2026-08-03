@@ -54,17 +54,28 @@ git push origin v0.3.0
 
 ## Homebrew Cask
 
-Template: `homebrew/Casks/gary-ai-platform-monitor.rb`
+File: `homebrew/Casks/gary-ai-platform-monitor.rb`
 
-1. Publish a release DMG matching the URL pattern  
-2. Compute `shasum -a 256 path/to.dmg` and set `sha256`  
-3. Install locally:
+**v0.3.0 (arm64, GitHub Release asset)**
+
+| Field | Value |
+|-------|--------|
+| URL | https://github.com/garyjeong/gary-ai-platform-monitor/releases/download/v0.3.0/AI-Platform-Monitor-0.3.0-arm64.dmg |
+| sha256 | `3c42447074c56ff0f1d9e9e15611c328086564f4efcdc0a2889c2e06e16eaa2c` |
+
+Install from a clone of this repo:
 
 ```bash
 brew install --cask ./homebrew/Casks/gary-ai-platform-monitor.rb
 ```
 
-Or host the cask in a personal tap (`garyjeong/homebrew-tap`).
+Or download the DMG from the [v0.3.0 release](https://github.com/garyjeong/gary-ai-platform-monitor/releases/tag/v0.3.0).
+
+When publishing a new version:
+
+1. Tag `vX.Y.Z` and wait for Release workflow  
+2. `gh release download vX.Y.Z -p '*.dmg' && shasum -a 256 AI-Platform-Monitor-*.dmg`  
+3. Update `version` + `sha256` in the cask  
 
 ## Dev install (recommended until notarized)
 
