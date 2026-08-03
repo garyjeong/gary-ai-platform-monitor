@@ -369,8 +369,8 @@ export function fetchGrokUsage(): UsageResult {
         usedPercent: null,
         resetsAt: u.resetsAt,
         label: u.aligned
-          ? `weekly tokens${u.truncated ? '+' : ''}`
-          : `7d tokens${u.truncated ? '+' : ''}`,
+          ? `Grok tokens (week)${u.truncated ? '+' : ''}`
+          : `Grok tokens (7d)${u.truncated ? '+' : ''}`,
         source: 'local',
         usedAbsolute: u.totalTokens,
         unit: 'tokens',
@@ -379,7 +379,7 @@ export function fetchGrokUsage(): UsageResult {
         id: u.aligned ? 'weekly_usd' : '7d_usd',
         usedPercent: null,
         resetsAt: u.resetsAt,
-        label: u.aligned ? 'weekly cost' : '7d cost',
+        label: u.aligned ? 'Grok cost (week)' : 'Grok cost (7d)',
         source: 'local',
         usedAbsolute: u.costUsd,
         unit: 'usd',

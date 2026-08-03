@@ -201,6 +201,25 @@ button.ghost {
   padding: 12px;
 }
 
+.card-off {
+  opacity: 0.72;
+  border-style: dashed;
+}
+
+.card-missing {
+  opacity: 0.5;
+}
+
+.card-highlight {
+  border-color: rgba(110, 168, 254, 0.55);
+  box-shadow: 0 0 0 1px rgba(110, 168, 254, 0.2);
+}
+
+.list {
+  /* ensure long lists can scroll so Grok etc. are reachable */
+  max-height: min(420px, calc(100vh - 120px));
+}
+
 .card-head {
   display: flex;
   justify-content: space-between;

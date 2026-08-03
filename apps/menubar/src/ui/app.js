@@ -1,4 +1,4 @@
-/* global gaiPm — Status panel: per-platform usage only (no aggregate AI n%) */
+/* global gaiPm — Status panel: each detected/monitored platform as its own card */
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -26,12 +26,10 @@ function formatWindow(w) {
     };
   }
   if (w.unit === 'tokens' && typeof w.usedAbsolute === 'number') {
-    const m = w.usedAbsolute / 1e6;
-    return {
-      text: m >= 1 ? `${m.toFixed(1)}M tok` : `${Math.round(w.usedAbsolute)} tok`,
-      pct: null,
-      sub: w.label || w.id,
-    };
+    const n = w.usedAbsolute;
+    const text =
+      n >= 1e6 ? `${(n / 1e6).toFixed(1)}M tokens` : `${Math.round(n).toLocaleString()} tokens`;
+    return { text, pct: null, sub: w.label || w.id };
   }
   if (w.unit === 'usd' && typeof w.usedAbsolute === 'number') {
     return {
@@ -72,65 +70,108 @@ function escapeHtml(s) {
     .replaceAll('"', '&quot;');
 }
 
+/** Extract tier=… from errorMessage (Grok OIDC subscription note) */
+function extractTier(msg) {
+  if (!msg) return null;
+  const m = String(msg).match(/tier=([A-Z0-9_]+)/i);
+  if (!m) return null;
+  return m[1]
+    .replace(/^SUBSCRIPTION_TIER_/, '')
+    .replace(/_/g, ' ');
+}
+
 function render(snap) {
   if (!snap) return;
 
   $('#updated').textContent = `Updated ${new Date(snap.updatedAt).toLocaleTimeString()}`;
 
-  // Status panel: only platforms that are monitored (each shown separately)
+  // Show every platform that is detected on this Mac, OR explicitly monitored.
+  // (User must see Grok when ~/.grok exists even if list is long.)
+  const visible = snap.providers.filter((p) => {
+    const pref = snap.config.providers[p.meta.id];
+    return Boolean(p.detect?.found) || Boolean(pref?.monitor);
+  });
+
+  // Monitored + found first, then alphabetical
+  visible.sort((a, b) => {
+    const am = snap.config.providers[a.meta.id]?.monitor ? 0 : 1;
+    const bm = snap.config.providers[b.meta.id]?.monitor ? 0 : 1;
+    if (am !== bm) return am - bm;
+    const af = a.detect?.found ? 0 : 1;
+    const bf = b.detect?.found ? 0 : 1;
+    if (af !== bf) return af - bf;
+    return a.meta.displayName.localeCompare(b.meta.displayName);
+  });
+
+  const found = snap.providers.filter((p) => p.detect?.found);
   const monitored = snap.providers.filter(
     (p) => snap.config.providers[p.meta.id]?.monitor
   );
-  const found = snap.providers.filter((p) => p.detect?.found);
-  $('#summary-meta').textContent = `${monitored.length} monitored · ${found.length} detected on this Mac`;
+  $('#summary-meta').textContent = `${found.length} detected · ${monitored.length} monitored`;
 
   const root = $('#providers');
   root.innerHTML = '';
 
-  if (monitored.length === 0) {
-    root.innerHTML = `<div class="empty">모니터링 중인 플랫폼이 없습니다.<br/>설정(⚙)에서 Monitor 를 켜 주세요.</div>`;
+  if (visible.length === 0) {
+    root.innerHTML = `<div class="empty">감지된 플랫폼이 없습니다.<br/>설정(⚙)에서 Monitor 를 확인하세요.</div>`;
     return;
   }
 
-  for (const p of monitored) {
+  for (const p of visible) {
     const pref = snap.config.providers[p.meta.id] || {
-      monitor: true,
+      monitor: false,
       showHealth: true,
     };
+    const foundHere = Boolean(p.detect?.found);
     const hb = healthBadge(pref.showHealth ? p.health : null);
     const card = document.createElement('article');
-    card.className = 'card';
+    card.className =
+      'card' +
+      (pref.monitor ? '' : ' card-off') +
+      (foundHere ? '' : ' card-missing');
+    card.dataset.providerId = p.meta.id;
 
-    const windows = p.usage?.windows || [];
-    const winHtml =
-      windows.length === 0
-        ? `<div class="meta-line">${
-            !p.detect?.found
-              ? '이 Mac에서 감지되지 않음'
-              : p.usage?.errorMessage || p.lifecycle || '사용량 데이터 없음'
-          }</div>`
-        : `<div class="windows">${windows
-            .map((w) => {
-              const f = formatWindow(w);
-              const bar =
-                f.pct == null
-                  ? ''
-                  : `<div class="bar"><i class="${pctClass(f.pct)}" style="width:${Math.min(100, Math.max(0, f.pct))}%"></i></div>`;
-              const reset = formatReset(w.resetsAt);
-              return `<div class="win">
-                <span class="label">${escapeHtml(f.sub)}${reset ? ` · ${escapeHtml(reset)}` : ''}</span>
-                <span class="value ${f.pct != null ? pctClass(f.pct) : ''}">${escapeHtml(f.text)}</span>
-                ${bar}
-              </div>`;
-            })
-            .join('')}</div>`;
+    const windows = pref.monitor ? p.usage?.windows || [] : [];
+    const tier = extractTier(p.usage?.errorMessage);
+    const titleExtra = tier ? ` · ${tier}` : '';
+
+    let body;
+    if (!foundHere) {
+      body = `<div class="meta-line">이 Mac에서 아직 감지되지 않음</div>`;
+    } else if (!pref.monitor) {
+      body = `<div class="meta-line">감지됨 · 모니터링 꺼짐 (설정에서 Monitor 켜기)</div>`;
+    } else if (windows.length === 0) {
+      body = `<div class="meta-line">${escapeHtml(
+        p.usage?.errorMessage || p.lifecycle || '사용량 데이터 없음'
+      )}</div>`;
+    } else {
+      body = `<div class="windows">${windows
+        .map((w) => {
+          const f = formatWindow(w);
+          const bar =
+            f.pct == null
+              ? ''
+              : `<div class="bar"><i class="${pctClass(f.pct)}" style="width:${Math.min(100, Math.max(0, f.pct))}%"></i></div>`;
+          const reset = formatReset(w.resetsAt);
+          return `<div class="win">
+            <span class="label">${escapeHtml(f.sub)}${reset ? ` · ${escapeHtml(reset)}` : ''}</span>
+            <span class="value ${f.pct != null ? pctClass(f.pct) : ''}">${escapeHtml(f.text)}</span>
+            ${bar}
+          </div>`;
+        })
+        .join('')}</div>`;
+      // Grok: no % from CLI — surface a short note under values
+      if (p.meta.id === 'grok' && windows.every((w) => w.usedPercent == null)) {
+        body += `<div class="meta-line">구독 한도 % 는 웹/쿠키 경로 필요 · CLI 는 토큰·비용만</div>`;
+      }
+    }
 
     card.innerHTML = `
       <div class="card-head">
-        <span class="name">${escapeHtml(p.meta.displayName)}</span>
+        <span class="name">${escapeHtml(p.meta.displayName)}${escapeHtml(titleExtra)}</span>
         <span class="badge ${hb.cls}">${escapeHtml(hb.text)}</span>
       </div>
-      ${winHtml}
+      ${body}
       <div class="meta-line">${escapeHtml(p.lifecycle)}${
         p.health?.pageUrl
           ? ` · <a data-url="${escapeHtml(p.health.pageUrl)}" class="status-link">status</a>`
@@ -138,6 +179,13 @@ function render(snap) {
       }</div>
     `;
     root.appendChild(card);
+  }
+
+  // Scroll Grok (or first provider) into view if requested via hash — always ensure list starts at top with monitored
+  const grokCard = root.querySelector('[data-provider-id="grok"]');
+  if (grokCard) {
+    // mild highlight so it's easy to spot
+    grokCard.classList.add('card-highlight');
   }
 
   root.querySelectorAll('a.status-link').forEach((a) => {
