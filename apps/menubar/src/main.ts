@@ -303,15 +303,11 @@ app.on('window-all-closed', () => {
 });
 
 function loadTrayIcon(): NativeImage {
-  // Prefer 16px base; include @2x if present for Retina sharpness.
-  // Menu bar icons must stay small — never ship 44px+ tray assets.
+  // Menu bar target: ~20 logical points (readable, not oversized).
+  const TRAY_PT = 20;
   const baseCandidates = [
     path.join(__dirname, 'icons', 'trayTemplate.png'),
     path.join(__dirname, '..', 'build', 'trayTemplate.png'),
-  ];
-  const hiCandidates = [
-    path.join(__dirname, 'icons', 'trayTemplate@2x.png'),
-    path.join(__dirname, '..', 'build', 'trayTemplate@2x.png'),
   ];
 
   for (const p of baseCandidates) {
@@ -320,26 +316,10 @@ function loadTrayIcon(): NativeImage {
       let img = nativeImage.createFromPath(p);
       if (img.isEmpty()) continue;
 
-      // Attach @2x representation when available
-      for (const hi of hiCandidates) {
-        if (!fs.existsSync(hi)) continue;
-        try {
-          const hiImg = nativeImage.createFromPath(hi);
-          if (!hiImg.isEmpty()) {
-            // rebuild with both scales if buffer API works; else resize 1x only
-            img = nativeImage.createFromBuffer(img.toPNG(), { scaleFactor: 1.0 });
-            // Electron: createFromPath of 16px is enough; force max 16pt
-            break;
-          }
-        } catch {
-          // ignore
-        }
-      }
-
-      // Cap display size at 16×16 logical points (menu bar standard)
       const size = img.getSize();
-      if (size.width > 18 || size.height > 18) {
-        img = img.resize({ width: 16, height: 16, quality: 'best' });
+      // Keep tray at ~20pt; only downscale if asset is larger
+      if (size.width !== TRAY_PT || size.height !== TRAY_PT) {
+        img = img.resize({ width: TRAY_PT, height: TRAY_PT, quality: 'best' });
       }
 
       // macOS: template = monochrome, follows menu bar light/dark
@@ -351,7 +331,7 @@ function loadTrayIcon(): NativeImage {
   }
   // Fallback simple ring glyph
   const fallback = nativeImage.createFromDataURL(TRAY_FALLBACK_PNG);
-  const fb = fallback.resize({ width: 16, height: 16, quality: 'best' });
+  const fb = fallback.resize({ width: TRAY_PT, height: TRAY_PT, quality: 'best' });
   fb.setTemplateImage(true);
   return fb;
 }
