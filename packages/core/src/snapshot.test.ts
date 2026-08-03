@@ -53,8 +53,9 @@ describe('buildSnapshot', () => {
     assert.equal(snap.config.providers.claude?.monitor, true);
     assert.equal(saved.providers.claude?.monitor, true);
     assert.equal(snap.providers[0]?.lifecycle, 'monitored');
-    assert.equal(snap.menuBar.maxUsedPercent, 62);
-    assert.match(snap.menuBar.title, /62%/);
+    // No aggregate "AI n%" title — per-platform lines only
+    assert.equal(snap.menuBar.title, '');
+    assert.equal(snap.menuBar.lines[0]?.usedPercent, 62);
   });
 
   it('respects monitor false and does not fetch usage', async () => {
@@ -78,7 +79,7 @@ describe('buildSnapshot', () => {
 });
 
 describe('summarizeMenuBar', () => {
-  it('picks highest percent', () => {
+  it('lists each monitored provider without aggregate title', () => {
     const s = summarizeMenuBar(
       [
         {
@@ -114,6 +115,8 @@ describe('summarizeMenuBar', () => {
         },
       }
     );
-    assert.equal(s.maxUsedPercent, 80);
+    assert.equal(s.title, '');
+    assert.equal(s.lines.length, 2);
+    assert.equal(s.lines.find((l) => l.id === 'b')?.usedPercent, 80);
   });
 });

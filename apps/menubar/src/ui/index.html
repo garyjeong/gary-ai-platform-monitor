@@ -13,47 +13,23 @@
   <body>
     <header class="top">
       <div>
-        <h1>AI Platform Monitor</h1>
+        <h1>Platforms</h1>
         <p class="sub" id="updated">—</p>
       </div>
       <div class="actions">
         <button type="button" id="btn-refresh" title="Refresh">↻</button>
+        <button type="button" id="btn-settings" title="Settings">⚙</button>
         <button type="button" id="btn-quit" title="Quit" class="ghost">✕</button>
       </div>
     </header>
 
-    <section class="summary" id="summary">
-      <div class="summary-title" id="tray-title">AI</div>
-      <div class="summary-meta" id="summary-meta">Loading…</div>
-    </section>
+    <p class="summary-meta" id="summary-meta">Loading…</p>
 
     <section class="list" id="providers"></section>
 
-    <section class="settings">
-      <h2>Settings</h2>
-      <label class="row">
-        <span>Health interval</span>
-        <select id="health-interval">
-          <option value="10">10s</option>
-          <option value="15">15s</option>
-          <option value="30" selected>30s</option>
-          <option value="60">60s</option>
-        </select>
-      </label>
-      <label class="row toggle-row">
-        <span>Open at login</span>
-        <input type="checkbox" id="open-at-login" />
-      </label>
-      <label class="row toggle-row">
-        <span>Read browser cookies</span>
-        <input type="checkbox" id="browser-cookies" />
-      </label>
-      <p class="hint">
-        Usage % when available. Grok: local tokens, or browser Cookie for % (see docs).
-        Extra providers: Gemini CLI, OpenRouter key, Cursor cookies.
-        Health from public status pages — no alerts.
-      </p>
-    </section>
+    <footer class="footer-hint">
+      각 플랫폼 사용량은 카드별로 확인합니다. 모니터링 on/off 는 설정에서 변경하세요.
+    </footer>
 
     <script src="./app.js" type="module"></script>
   </body>

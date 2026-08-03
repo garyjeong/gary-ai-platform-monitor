@@ -12,11 +12,22 @@ import type {
 } from './types.js';
 import { getProviderPref } from './config.js';
 
+export interface MenuBarProviderLine {
+  id: string;
+  displayName: string;
+  /** Primary window % if any */
+  usedPercent: number | null;
+  health?: HealthResult['indicator'];
+}
+
 export interface MenuBarSummary {
-  /** Compact title for tray, e.g. "AI 71%" or "AI" */
+  /**
+   * Tray title text. Intentionally NOT a single "AI n%" aggregate —
+   * each platform is inspected in the panel. Empty = icon-only tray.
+   */
   title: string;
-  /** Highest usedPercent among monitored providers (null if none) */
-  maxUsedPercent: number | null;
+  /** Per-provider lines for tooltip / future multi-status items */
+  lines: MenuBarProviderLine[];
   worstHealth: HealthResult['indicator'];
 }
 
@@ -141,7 +152,6 @@ export function summarizeMenuBar(
   providers: ProviderSnapshot[],
   config: AppConfig
 ): MenuBarSummary {
-  let maxUsedPercent: number | null = null;
   let worstHealth: HealthResult['indicator'] = 'none';
   const rank: Record<string, number> = {
     none: 0,
@@ -151,41 +161,39 @@ export function summarizeMenuBar(
     critical: 4,
     unknown: 1,
   };
+  const lines: MenuBarProviderLine[] = [];
 
   for (const p of providers) {
     const pref = getProviderPref(config, p.meta.id);
     if (!pref.monitor) continue;
 
+    let usedPercent: number | null = null;
     if (p.usage?.windows) {
       for (const w of p.usage.windows) {
         if (typeof w.usedPercent === 'number') {
-          maxUsedPercent =
-            maxUsedPercent === null
-              ? w.usedPercent
-              : Math.max(maxUsedPercent, w.usedPercent);
+          // Prefer first % window (already ordered by adapters); keep highest as fallback label only
+          if (usedPercent === null || w.usedPercent > usedPercent) {
+            usedPercent = w.usedPercent;
+          }
         }
       }
     }
 
+    let health: HealthResult['indicator'] | undefined;
     if (pref.showHealth && p.health && config.health.showInMenuBar) {
+      health = p.health.indicator;
       const r = rank[p.health.indicator] ?? 0;
       if (r > (rank[worstHealth] ?? 0)) worstHealth = p.health.indicator;
     }
+
+    lines.push({
+      id: p.meta.id,
+      displayName: p.meta.displayName,
+      usedPercent,
+      health,
+    });
   }
 
-  let title = 'AI';
-  if (maxUsedPercent !== null) {
-    title = `AI ${Math.round(maxUsedPercent)}%`;
-  }
-  if (
-    config.health.showInMenuBar &&
-    (worstHealth === 'minor' ||
-      worstHealth === 'major' ||
-      worstHealth === 'critical' ||
-      worstHealth === 'maintenance')
-  ) {
-    title += worstHealth === 'critical' || worstHealth === 'major' ? ' ⚠' : ' ·';
-  }
-
-  return { title, maxUsedPercent, worstHealth };
+  // Icon-only tray — no aggregate "AI n%" string
+  return { title: '', lines, worstHealth };
 }

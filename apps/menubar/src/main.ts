@@ -1,6 +1,6 @@
 /**
- * Electron main process — menu bar tray + popover window.
- * No outage notifications (product decision).
+ * Electron main — tray (icon only) + status popover + separate Settings window.
+ * No aggregate "AI n%" tray title. No outage notifications.
  */
 
 import {
@@ -28,7 +28,8 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 let tray: Tray | null = null;
-let win: BrowserWindow | null = null;
+let statusWin: BrowserWindow | null = null;
+let settingsWin: BrowserWindow | null = null;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let latest: FullSnapshot | null = null;
 let refreshing = false;
@@ -39,10 +40,19 @@ function uiPath(...parts: string[]): string {
   return path.join(__dirname, 'ui', ...parts);
 }
 
-function createWindow(): BrowserWindow {
+function sharedWebPrefs() {
+  return {
+    preload: path.join(__dirname, 'preload.js'),
+    contextIsolation: true,
+    nodeIntegration: false,
+    sandbox: false,
+  };
+}
+
+function createStatusWindow(): BrowserWindow {
   const w = new BrowserWindow({
-    width: 380,
-    height: 520,
+    width: 400,
+    height: 560,
     show: false,
     frame: false,
     resizable: true,
@@ -51,19 +61,37 @@ function createWindow(): BrowserWindow {
     fullscreenable: false,
     skipTaskbar: true,
     alwaysOnTop: true,
-    transparent: false,
     backgroundColor: '#1a1b1e',
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false,
-    },
+    webPreferences: sharedWebPrefs(),
   });
 
   w.loadFile(uiPath('index.html'));
   w.on('blur', () => {
     if (w && !w.webContents.isDevToolsOpened()) w.hide();
+  });
+  return w;
+}
+
+function createSettingsWindow(): BrowserWindow {
+  const w = new BrowserWindow({
+    width: 480,
+    height: 640,
+    show: false,
+    frame: true,
+    title: 'AI Platform Monitor — Settings',
+    resizable: true,
+    minimizable: true,
+    maximizable: false,
+    fullscreenable: false,
+    skipTaskbar: false,
+    alwaysOnTop: false,
+    backgroundColor: '#1a1b1e',
+    webPreferences: sharedWebPrefs(),
+  });
+
+  w.loadFile(uiPath('settings.html'));
+  w.on('closed', () => {
+    settingsWin = null;
   });
   return w;
 }
@@ -80,7 +108,6 @@ function positionNearTray(w: BrowserWindow): void {
   let x = Math.round(trayBounds.x + trayBounds.width / 2 - winBounds.width / 2);
   let y = Math.round(trayBounds.y + trayBounds.height + 4);
 
-  // Keep on screen
   const wa = display.workArea;
   x = Math.min(Math.max(x, wa.x + 8), wa.x + wa.width - winBounds.width - 8);
   if (y + winBounds.height > wa.y + wa.height) {
@@ -89,14 +116,30 @@ function positionNearTray(w: BrowserWindow): void {
   w.setPosition(x, y, false);
 }
 
-function setTrayTitle(title: string): void {
+function updateTrayChrome(snap: FullSnapshot): void {
   if (!tray) return;
-  if (isMac) {
-    tray.setTitle(title);
-    tray.setToolTip(`AI Platform Monitor — ${title}`);
-  } else {
-    tray.setToolTip(title);
-  }
+  // Icon only — never "AI 93%"
+  tray.setTitle('');
+  const lines = snap.menuBar.lines ?? [];
+  const tip =
+    lines.length === 0
+      ? 'AI Platform Monitor\n(no platforms monitored)'
+      : [
+          'AI Platform Monitor',
+          ...lines.map((l) => {
+            const pct =
+              typeof l.usedPercent === 'number'
+                ? `${Math.round(l.usedPercent)}%`
+                : '—';
+            return `${l.displayName}: ${pct}`;
+          }),
+        ].join('\n');
+  tray.setToolTip(tip);
+}
+
+function broadcast(snap: FullSnapshot): void {
+  statusWin?.webContents.send('snapshot', snap);
+  settingsWin?.webContents.send('snapshot', snap);
 }
 
 async function refresh(reason = 'poll'): Promise<void> {
@@ -104,8 +147,8 @@ async function refresh(reason = 'poll'): Promise<void> {
   refreshing = true;
   try {
     latest = await takeSnapshot();
-    setTrayTitle(latest.menuBar.title);
-    win?.webContents.send('snapshot', latest);
+    updateTrayChrome(latest);
+    broadcast(latest);
     schedulePoll();
   } catch (err) {
     console.error(`[gai-pm] refresh failed (${reason})`, err);
@@ -117,24 +160,31 @@ async function refresh(reason = 'poll'): Promise<void> {
 function schedulePoll(): void {
   if (pollTimer) clearInterval(pollTimer);
   const cfg = latest?.config ?? loadConfig();
-  // Health wants ~30s; usage can share the same loop (adapters cache Claude 60s)
   const ms = Math.max(10, cfg.health.intervalSeconds) * 1000;
   pollTimer = setInterval(() => {
     void refresh('interval');
   }, ms);
 }
 
-function toggleWindow(): void {
-  if (!win) win = createWindow();
-  if (win.isVisible()) {
-    win.hide();
+function toggleStatusWindow(): void {
+  if (!statusWin) statusWin = createStatusWindow();
+  if (statusWin.isVisible()) {
+    statusWin.hide();
     return;
   }
-  positionNearTray(win);
-  win.show();
-  win.focus();
-  if (latest) win.webContents.send('snapshot', latest);
+  positionNearTray(statusWin);
+  statusWin.show();
+  statusWin.focus();
+  if (latest) statusWin.webContents.send('snapshot', latest);
   void refresh('open');
+}
+
+function openSettingsWindow(): void {
+  if (!settingsWin) settingsWin = createSettingsWindow();
+  if (latest) settingsWin.webContents.send('snapshot', latest);
+  settingsWin.show();
+  settingsWin.focus();
+  void refresh('settings');
 }
 
 function setupIpc(): void {
@@ -189,6 +239,10 @@ function setupIpc(): void {
     return app.getLoginItemSettings().openAtLogin;
   });
 
+  ipcMain.handle('open-settings', () => {
+    openSettingsWindow();
+  });
+
   ipcMain.handle('quit', () => {
     app.quit();
   });
@@ -219,18 +273,18 @@ app.whenReady().then(async () => {
     app.dock?.hide();
   }
 
-  // Sync login item with saved config (and OS state)
   const cfg = loadConfig();
   applyOpenAtLogin(cfg.openAtLogin);
 
-  // Empty 16x16 template-ish icon; title carries the data on macOS
-  const icon = nativeImage.createEmpty();
-  tray = new Tray(icon.isEmpty() ? nativeImage.createFromDataURL(DOT_PNG) : icon);
+  const icon = nativeImage.createFromDataURL(DOT_PNG);
+  tray = new Tray(icon);
   tray.setIgnoreDoubleClickEvents(true);
-  tray.on('click', () => toggleWindow());
+  tray.setTitle(''); // never show aggregate %
+  tray.on('click', () => toggleStatusWindow());
   tray.on('right-click', () => {
     const menu = Menu.buildFromTemplate([
-      { label: 'Open', click: () => toggleWindow() },
+      { label: 'Show Status', click: () => toggleStatusWindow() },
+      { label: 'Settings…', click: () => openSettingsWindow() },
       { label: 'Refresh', click: () => void refresh('menu') },
       { type: 'separator' },
       { label: 'Quit', click: () => app.quit() },
@@ -239,15 +293,14 @@ app.whenReady().then(async () => {
   });
 
   setupIpc();
-  win = createWindow();
+  statusWin = createStatusWindow();
   await refresh('startup');
 });
 
-// Keep running as a tray app even if all windows are closed.
 app.on('window-all-closed', () => {
-  /* no-op on purpose */
+  /* tray app */
 });
 
-/** 1x1 dark pixel as fallback tray image */
+/** Simple status-dot icon (14x14) */
 const DOT_PNG =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAOCAYAAAAfSC3RAAAAHElEQVQoz2NgGAWjYBSMglEwCkbBKBgFo4AaAACX8gEBqJ3xUwAAAABJRU5ErkJggg==';

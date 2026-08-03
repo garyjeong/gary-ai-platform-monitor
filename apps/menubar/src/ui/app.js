@@ -1,4 +1,4 @@
-/* global gaiPm */
+/* global gaiPm — Status panel: per-platform usage only (no aggregate AI n%) */
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -40,6 +40,13 @@ function formatWindow(w) {
       sub: w.label || w.id,
     };
   }
+  if (typeof w.usedAbsolute === 'number') {
+    return {
+      text: String(w.usedAbsolute),
+      pct: null,
+      sub: w.label || w.id,
+    };
+  }
   return { text: '—', pct: null, sub: w.label || w.id };
 }
 
@@ -57,48 +64,40 @@ function formatReset(sec) {
   }
 }
 
+function escapeHtml(s) {
+  return String(s ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
+}
+
 function render(snap) {
   if (!snap) return;
 
   $('#updated').textContent = `Updated ${new Date(snap.updatedAt).toLocaleTimeString()}`;
-  $('#tray-title').textContent = snap.menuBar?.title ?? 'AI';
 
+  // Status panel: only platforms that are monitored (each shown separately)
   const monitored = snap.providers.filter(
     (p) => snap.config.providers[p.meta.id]?.monitor
   );
   const found = snap.providers.filter((p) => p.detect?.found);
-  $('#summary-meta').textContent = `${found.length} detected · ${monitored.length} monitored · health ${snap.config.health.intervalSeconds}s`;
-
-  const interval = String(snap.config.health.intervalSeconds || 30);
-  const sel = $('#health-interval');
-  if (sel.value !== interval) sel.value = interval;
-
-  const loginEl = $('#open-at-login');
-  if (loginEl && loginEl.checked !== Boolean(snap.config.openAtLogin)) {
-    loginEl.checked = Boolean(snap.config.openAtLogin);
-  }
-  const cookieEl = $('#browser-cookies');
-  if (
-    cookieEl &&
-    cookieEl.checked !== Boolean(snap.config.scan?.includeBrowserCookies)
-  ) {
-    cookieEl.checked = Boolean(snap.config.scan?.includeBrowserCookies);
-  }
+  $('#summary-meta').textContent = `${monitored.length} monitored · ${found.length} detected on this Mac`;
 
   const root = $('#providers');
   root.innerHTML = '';
 
-  if (!snap.providers.length) {
-    root.innerHTML = `<div class="empty">No providers registered</div>`;
+  if (monitored.length === 0) {
+    root.innerHTML = `<div class="empty">모니터링 중인 플랫폼이 없습니다.<br/>설정(⚙)에서 Monitor 를 켜 주세요.</div>`;
     return;
   }
 
-  for (const p of snap.providers) {
+  for (const p of monitored) {
     const pref = snap.config.providers[p.meta.id] || {
-      monitor: false,
+      monitor: true,
       showHealth: true,
     };
-    const hb = healthBadge(p.health);
+    const hb = healthBadge(pref.showHealth ? p.health : null);
     const card = document.createElement('article');
     card.className = 'card';
 
@@ -107,10 +106,8 @@ function render(snap) {
       windows.length === 0
         ? `<div class="meta-line">${
             !p.detect?.found
-              ? 'Not detected on this Mac'
-              : !pref.monitor
-                ? 'Monitoring off'
-                : p.usage?.errorMessage || p.lifecycle || 'No usage data'
+              ? '이 Mac에서 감지되지 않음'
+              : p.usage?.errorMessage || p.lifecycle || '사용량 데이터 없음'
           }</div>`
         : `<div class="windows">${windows
             .map((w) => {
@@ -122,7 +119,7 @@ function render(snap) {
               const reset = formatReset(w.resetsAt);
               return `<div class="win">
                 <span class="label">${escapeHtml(f.sub)}${reset ? ` · ${escapeHtml(reset)}` : ''}</span>
-                <span class="value ${pctClass(f.pct ?? 0)}">${escapeHtml(f.text)}</span>
+                <span class="value ${f.pct != null ? pctClass(f.pct) : ''}">${escapeHtml(f.text)}</span>
                 ${bar}
               </div>`;
             })
@@ -139,35 +136,9 @@ function render(snap) {
           ? ` · <a data-url="${escapeHtml(p.health.pageUrl)}" class="status-link">status</a>`
           : ''
       }</div>
-      <div class="toggles">
-        <label class="toggle">
-          <input type="checkbox" data-monitor="${escapeHtml(p.meta.id)}" ${pref.monitor ? 'checked' : ''} ${p.detect?.found ? '' : 'disabled'} />
-          Monitor
-        </label>
-        <label class="toggle">
-          <input type="checkbox" data-health="${escapeHtml(p.meta.id)}" ${pref.showHealth ? 'checked' : ''} />
-          Health
-        </label>
-      </div>
     `;
     root.appendChild(card);
   }
-
-  root.querySelectorAll('[data-monitor]').forEach((el) => {
-    el.addEventListener('change', async (e) => {
-      const id = e.target.getAttribute('data-monitor');
-      const snap2 = await window.gaiPm.setMonitor(id, e.target.checked);
-      render(snap2);
-    });
-  });
-
-  root.querySelectorAll('[data-health]').forEach((el) => {
-    el.addEventListener('change', async (e) => {
-      const id = e.target.getAttribute('data-health');
-      const snap2 = await window.gaiPm.setShowHealth(id, e.target.checked);
-      render(snap2);
-    });
-  });
 
   root.querySelectorAll('a.status-link').forEach((a) => {
     a.addEventListener('click', (e) => {
@@ -178,32 +149,15 @@ function render(snap) {
   });
 }
 
-function escapeHtml(s) {
-  return String(s ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
-}
-
 async function boot() {
   $('#btn-refresh').addEventListener('click', async () => {
     const snap = await window.gaiPm.refresh();
     render(snap);
   });
+  $('#btn-settings').addEventListener('click', () => {
+    void window.gaiPm.openSettings();
+  });
   $('#btn-quit').addEventListener('click', () => window.gaiPm.quit());
-  $('#health-interval').addEventListener('change', async (e) => {
-    const snap = await window.gaiPm.setHealthInterval(Number(e.target.value));
-    render(snap);
-  });
-  $('#open-at-login').addEventListener('change', async (e) => {
-    const snap = await window.gaiPm.setOpenAtLogin(e.target.checked);
-    render(snap);
-  });
-  $('#browser-cookies').addEventListener('change', async (e) => {
-    const snap = await window.gaiPm.setBrowserCookies(e.target.checked);
-    render(snap);
-  });
 
   window.gaiPm.onSnapshot(render);
   const snap = await window.gaiPm.getSnapshot();

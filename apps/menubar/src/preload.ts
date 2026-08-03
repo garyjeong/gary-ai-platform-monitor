@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('gaiPm', {
   setOpenAtLogin: (on: boolean) => ipcRenderer.invoke('set-open-at-login', on),
   setBrowserCookies: (on: boolean) => ipcRenderer.invoke('set-browser-cookies', on),
   getOpenAtLogin: () => ipcRenderer.invoke('get-open-at-login'),
+  openSettings: () => ipcRenderer.invoke('open-settings'),
   quit: () => ipcRenderer.invoke('quit'),
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
   onSnapshot: (cb: (snap: unknown) => void) => {

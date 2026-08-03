@@ -74,6 +74,81 @@ button.ghost {
   opacity: 0.7;
 }
 
+.summary-meta {
+  margin: 8px 14px 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.footer-hint {
+  margin: 8px 14px 14px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.settings-page .top.framed {
+  -webkit-app-region: no-drag;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-block {
+  margin: 12px 14px 16px;
+  padding: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.settings-block h2 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.hint.tight {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.provider-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 360px;
+  overflow: auto;
+}
+
+.provider-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.provider-row:last-child {
+  border-bottom: none;
+}
+
+.provider-row.dim {
+  opacity: 0.55;
+}
+
+.provider-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.provider-sub {
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 2px;
+}
+
 .summary {
   margin: 12px 14px;
   padding: 12px 14px;
