@@ -23,7 +23,7 @@ All credential and usage data stays **local**. Health uses public status APIs on
 | Monorepo + contracts | ✅ |
 | Seed adapters detect (Claude / Codex / Grok) | ✅ |
 | Statuspage health client | ✅ |
-| Usage % collectors | ⏳ Phase 2 |
+| Usage collectors | ✅ Claude % · Codex % · Grok tokens (no %) |
 | Menu bar app | ⏳ Phase 3 |
 
 See [docs/plan.md](./docs/plan.md) for the full plan.
@@ -42,8 +42,25 @@ npm install
 npm run build
 npm run scan      # which providers look logged-in locally
 npm run health    # live status.claude.com / status.openai.com / …
+npm run usage     # quota windows (Claude/Codex %; Grok tokens)
 npm test
 ```
+
+### Usage notes
+
+| Provider | Source | Output |
+|----------|--------|--------|
+| Claude | Claude Code OAuth → Anthropic usage API | 5h / 7d **%** |
+| Codex | `~/.codex/sessions/**/rollout-*.jsonl` `rate_limits` | primary **%** |
+| Grok | `~/.grok/sessions` aggregation | tokens + USD only (`usedPercent: null`) |
+
+Grok weekly window alignment (optional):
+
+```bash
+export GAI_PM_GROK_WEEK_ANCHOR='2026-08-04T14:19:00'
+npm run usage
+```
+
 
 Example `scan` output shape:
 

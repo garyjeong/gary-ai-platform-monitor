@@ -2,7 +2,7 @@
  * Grok adapter — seed provider.
  *
  * detect: ~/.grok auth / sessions
- * fetchUsage: Phase 2 spike (CLI billing RPC / browser / local tokens)
+ * fetchUsage: local session aggregation (tokens/USD; percent not available)
  * health: status.x.ai (RSS/custom — Phase 4)
  */
 
@@ -15,6 +15,7 @@ import type {
   ProviderAdapter,
   UsageResult,
 } from '@gary-ai-platform-monitor/core';
+import { fetchGrokUsage } from './local-usage.js';
 
 const HOME = os.homedir();
 const GROK_HOME = path.join(HOME, '.grok');
@@ -26,10 +27,9 @@ export const grokAdapter: ProviderAdapter = {
     status: {
       pageUrl: 'https://status.x.ai',
       strategy: 'rss',
-      // summaryUrl TBD when feed/API path is confirmed
     },
     capabilities: {
-      percentWindows: false, // until web/billing % path is proven
+      percentWindows: false,
       costOnly: true,
       multiWindow: false,
     },
@@ -65,15 +65,9 @@ export const grokAdapter: ProviderAdapter = {
   },
 
   async fetchUsage(): Promise<UsageResult> {
-    // Phase 0/2 gate: percent may require browser session or billing RPC
-    return {
-      providerId: 'grok',
-      windows: [],
-      status: 'unsupported',
-      updatedAt: Date.now(),
-      errorMessage: 'fetchUsage not implemented yet — Phase 2 (percent path TBD)',
-    };
+    return fetchGrokUsage();
   },
 };
 
+export { fetchGrokUsage, readGrokUsage, weeklyWindow } from './local-usage.js';
 export default grokAdapter;

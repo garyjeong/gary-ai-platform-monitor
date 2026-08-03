@@ -2,7 +2,7 @@
  * Codex (ChatGPT plan) adapter — seed provider.
  *
  * detect: ~/.codex sessions / auth
- * fetchUsage: rate_limits from rollout JSONL (Phase 2)
+ * fetchUsage: local rollout rate_limits used_percent
  * health: https://status.openai.com
  */
 
@@ -15,6 +15,7 @@ import type {
   ProviderAdapter,
   UsageResult,
 } from '@gary-ai-platform-monitor/core';
+import { readCodexUsage } from './usage.js';
 
 const HOME = os.homedir();
 const CODEX_HOME = process.env.CODEX_HOME ?? path.join(HOME, '.codex');
@@ -54,20 +55,18 @@ export const codexAdapter: ProviderAdapter = {
     return {
       found: signals.length > 0,
       signals,
-      confidence: signals.some((s) => s.kind === 'session_dir') ? 'high' : signals.length ? 'medium' : 'low',
+      confidence: signals.some((s) => s.kind === 'session_dir')
+        ? 'high'
+        : signals.length
+          ? 'medium'
+          : 'low',
     };
   },
 
   async fetchUsage(): Promise<UsageResult> {
-    // Phase 2: parse ~/.codex/sessions/**/rollout-*.jsonl rate_limits.used_percent
-    return {
-      providerId: 'codex',
-      windows: [],
-      status: 'unsupported',
-      updatedAt: Date.now(),
-      errorMessage: 'fetchUsage not implemented yet — Phase 2',
-    };
+    return readCodexUsage();
   },
 };
 
+export { readCodexUsage, mapCodexRateLimits, parseRateLimitsFromRolloutText } from './usage.js';
 export default codexAdapter;

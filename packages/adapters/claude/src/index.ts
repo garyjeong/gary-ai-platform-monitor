@@ -2,7 +2,7 @@
  * Claude adapter — seed provider.
  *
  * detect: Claude Code Keychain / ~/.claude credentials / projects dir
- * fetchUsage: Anthropic OAuth usage API (Phase 2 full impl; stub returns auth signal)
+ * fetchUsage: Anthropic OAuth usage API (5h / 7d %)
  * health: https://status.claude.com/api/v2/summary.json
  */
 
@@ -16,6 +16,7 @@ import type {
   ProviderAdapter,
   UsageResult,
 } from '@gary-ai-platform-monitor/core';
+import { fetchClaudeUsage } from './usage.js';
 
 const HOME = os.homedir();
 
@@ -74,16 +75,9 @@ export const claudeAdapter: ProviderAdapter = {
   },
 
   async fetchUsage(): Promise<UsageResult> {
-    // Phase 2: call api.anthropic.com/api/oauth/usage with OAuth token
-    // (logic already proven in gary-claude-code-hud)
-    return {
-      providerId: 'claude',
-      windows: [],
-      status: 'unsupported',
-      updatedAt: Date.now(),
-      errorMessage: 'fetchUsage not implemented yet — Phase 2',
-    };
+    return fetchClaudeUsage();
   },
 };
 
+export { fetchClaudeUsage, mapOAuthUsageToWindows } from './usage.js';
 export default claudeAdapter;

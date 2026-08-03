@@ -15,7 +15,8 @@
     "typecheck": "npm run build",
     "scan": "node --import tsx scripts/scan.ts",
     "health": "node --import tsx scripts/health.ts",
-    "test": "npm run test -w @gary-ai-platform-monitor/health --if-present"
+    "usage": "node --import tsx scripts/usage.ts",
+    "test": "npm run test -w @gary-ai-platform-monitor/health --if-present && npm run test -w @gary-ai-platform-monitor/adapter-claude --if-present && npm run test -w @gary-ai-platform-monitor/adapter-codex --if-present"
   },
   "engines": {
     "node": ">=20"

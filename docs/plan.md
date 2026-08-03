@@ -56,7 +56,7 @@ See `packages/core/src/types.ts` → `ProviderAdapter`:
 |----------|--------|---------|--------|
 | Claude | Keychain / `~/.claude` | OAuth `api.anthropic.com/api/oauth/usage` (Phase 2; proven in gary-claude-code-hud) | status.claude.com Statuspage v2 |
 | Codex | `~/.codex` sessions/auth | Local `rate_limits.used_percent` (Phase 2) | status.openai.com Statuspage v2 |
-| Grok | `~/.grok` | TBD: billing RPC / browser / local tokens | status.x.ai (RSS/custom Phase 4) |
+| Grok | `~/.grok` | Local sessions → tokens/USD only (**no %**); optional `GAI_PM_GROK_WEEK_ANCHOR` | status.x.ai (RSS/custom Phase 4) |
 
 ## Config path
 
@@ -75,14 +75,14 @@ See `packages/core/src/types.ts` → `ProviderAdapter`:
 
 ## Roadmap
 
-### Phase 0 — Scaffold + spike (current)
+### Phase 0 — Scaffold + spike
 
 - [x] Public repo + monorepo layout
 - [x] Core types / registry / discovery / config
 - [x] Health Statuspage client + Claude fixture test
 - [x] Seed adapters with real `detect()`
 - [x] CLI: `npm run scan`, `npm run health`
-- [ ] Grok percent path spike (go/no-go)
+- [x] Grok percent path spike → **no % from CLI/local** (tokens/USD only)
 
 ### Phase 1 — Core hardening
 
@@ -90,11 +90,12 @@ See `packages/core/src/types.ts` → `ProviderAdapter`:
 - [ ] Discovery merge with user prefs (never force re-enable)
 - [ ] Unified snapshot builder for UI
 
-### Phase 2 — Usage collectors
+### Phase 2 — Usage collectors (current)
 
-- [ ] Claude OAuth usage → 5h / 7d %
-- [ ] Codex rollout JSONL → used_percent
-- [ ] Grok: implement best available path; document if % blocked
+- [x] Claude OAuth usage → 5h / 7d %
+- [x] Codex rollout JSONL → used_percent
+- [x] Grok: local session tokens/USD (`usedPercent: null`); browser % deferred
+- [x] CLI: `npm run usage`
 
 ### Phase 3 — Menu bar app
 

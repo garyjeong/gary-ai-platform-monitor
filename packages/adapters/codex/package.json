@@ -12,12 +12,14 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "test": "node --import tsx --test src/usage.test.ts"
   },
   "dependencies": {
     "@gary-ai-platform-monitor/core": "0.1.0"
   },
   "devDependencies": {
+    "tsx": "^4.20.3",
     "typescript": "^5.8.3"
   }
 }
