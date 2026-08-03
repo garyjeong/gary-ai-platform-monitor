@@ -54,7 +54,14 @@ git push origin v0.3.0
 
 ## Homebrew Cask
 
-File: `homebrew/Casks/gary-ai-platform-monitor.rb`
+**Personal tap (recommended):** [garyjeong/homebrew-tap](https://github.com/garyjeong/homebrew-tap)
+
+```bash
+brew tap garyjeong/tap
+brew install --cask gary-ai-platform-monitor
+```
+
+Mirror of the cask also lives in this repo at `homebrew/Casks/gary-ai-platform-monitor.rb` (keep in sync with the tap).
 
 **v0.3.0 (arm64, GitHub Release asset)**
 
@@ -63,19 +70,19 @@ File: `homebrew/Casks/gary-ai-platform-monitor.rb`
 | URL | https://github.com/garyjeong/gary-ai-platform-monitor/releases/download/v0.3.0/AI-Platform-Monitor-0.3.0-arm64.dmg |
 | sha256 | `3c42447074c56ff0f1d9e9e15611c328086564f4efcdc0a2889c2e06e16eaa2c` |
 
-Install from a clone of this repo:
+Direct install without tap (from this clone):
 
 ```bash
 brew install --cask ./homebrew/Casks/gary-ai-platform-monitor.rb
 ```
 
-Or download the DMG from the [v0.3.0 release](https://github.com/garyjeong/gary-ai-platform-monitor/releases/tag/v0.3.0).
-
 When publishing a new version:
 
 1. Tag `vX.Y.Z` and wait for Release workflow  
 2. `gh release download vX.Y.Z -p '*.dmg' && shasum -a 256 AI-Platform-Monitor-*.dmg`  
-3. Update `version` + `sha256` in the cask  
+3. Update `version` + `sha256` in **both**:
+   - `garyjeong/homebrew-tap` → `Casks/gary-ai-platform-monitor.rb`
+   - this repo → `homebrew/Casks/gary-ai-platform-monitor.rb`
 
 ## Dev install (recommended until notarized)
 

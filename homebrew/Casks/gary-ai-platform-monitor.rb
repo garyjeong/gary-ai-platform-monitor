@@ -7,10 +7,10 @@ cask "gary-ai-platform-monitor" do
   desc "Menu bar usage % and status health for AI platforms"
   homepage "https://github.com/garyjeong/gary-ai-platform-monitor"
 
-  # Install:
-  #   brew install --cask ./homebrew/Casks/gary-ai-platform-monitor.rb
-  #
-  # Unsigned release: first open may require right-click → Open (Gatekeeper).
+  livecheck do
+    url "https://github.com/garyjeong/gary-ai-platform-monitor/releases/latest"
+    strategy :github_latest
+  end
 
   depends_on macos: ">= :sonoma"
   depends_on arch: :arm64

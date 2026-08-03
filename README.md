@@ -105,12 +105,15 @@ See [docs/packaging.md](./docs/packaging.md).
 https://github.com/garyjeong/gary-ai-platform-monitor/releases/tag/v0.3.0
 
 ```bash
-# Homebrew (from repo root)
-brew install --cask ./homebrew/Casks/gary-ai-platform-monitor.rb
+# Homebrew personal tap
+brew tap garyjeong/tap
+brew install --cask gary-ai-platform-monitor
 
 # Or rebuild DMG locally
 npm run dist:mac   # → apps/menubar/release/
 ```
+
+Tap repo: https://github.com/garyjeong/homebrew-tap  
 
 Gatekeeper may block unsigned apps: right-click → **Open**.  
 **Notarization** needs your Apple Developer ID (see packaging docs).
