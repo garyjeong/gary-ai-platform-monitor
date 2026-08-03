@@ -102,6 +102,7 @@ export async function fetchCopilotUsage(): Promise<UsageResult> {
         'User-Agent': 'gary-ai-platform-monitor/0.3.1',
         'X-Github-Api-Version': '2022-11-28',
       },
+      signal: AbortSignal.timeout(10_000),
     });
     if (res.status === 401 || res.status === 403) {
       return {

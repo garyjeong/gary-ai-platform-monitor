@@ -14,7 +14,7 @@
     <header class="top framed">
       <div>
         <h1>Settings</h1>
-        <p class="sub">플랫폼별 모니터링 · 앱 옵션</p>
+        <p class="sub">대시보드에 표시할 플랫폼 · 앱 옵션</p>
       </div>
       <div class="actions">
         <button type="button" class="icon-btn" id="btn-refresh" title="Refresh" aria-label="Refresh">↻</button>
@@ -24,7 +24,7 @@
     <section class="settings-block">
       <h2>App</h2>
       <label class="row">
-        <span>Health poll interval</span>
+        <span>Refresh interval (usage + health)</span>
         <select id="health-interval">
           <option value="10">10s</option>
           <option value="15">15s</option>
@@ -41,16 +41,20 @@
         <input type="checkbox" id="browser-cookies" />
       </label>
       <p class="hint">
-        알림은 보내지 않습니다. Health 는 공개 status 페이지만 폴링합니다.
+        알림은 보내지 않습니다. 표시 ON 인 플랫폼만 사용량·status 를 함께 조회합니다.
       </p>
     </section>
 
     <section class="settings-block">
       <h2>Platforms</h2>
       <p class="hint tight">
-        <strong>Monitor</strong> 를 켠 플랫폼만 상태 패널에 표시됩니다.
-        미감지 플랫폼도 토글은 가능하지만 데이터가 없을 수 있습니다.
+        <strong>표시 ON</strong> 인 플랫폼만 대시보드에 나옵니다 (사용량 + health 함께).<br />
+        끄면 자동으로 다시 켜지지 않습니다. 언제든 여기서 다시 켤 수 있습니다.
       </p>
+      <div class="filter-row">
+        <button type="button" id="btn-monitor-detected" class="text-btn">감지된 것만 표시</button>
+        <button type="button" id="btn-monitor-none" class="text-btn">모두 끄기</button>
+      </div>
       <div id="provider-settings" class="provider-settings"></div>
     </section>
 

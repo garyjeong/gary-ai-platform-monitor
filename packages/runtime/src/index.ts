@@ -73,6 +73,18 @@ export function updateMonitor(providerId: string, monitor: boolean): AppConfig {
   return next;
 }
 
+/** Batch monitor updates (one load/save) for Settings bulk actions. */
+export function updateMonitors(
+  updates: ReadonlyArray<{ providerId: string; monitor: boolean }>
+): AppConfig {
+  let cfg = loadConfig();
+  for (const u of updates) {
+    cfg = setProviderMonitor(cfg, u.providerId, u.monitor);
+  }
+  saveConfig(cfg);
+  return cfg;
+}
+
 export function updateShowHealth(providerId: string, showHealth: boolean): AppConfig {
   const next = setProviderShowHealth(loadConfig(), providerId, showHealth);
   saveConfig(next);

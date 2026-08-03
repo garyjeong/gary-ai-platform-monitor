@@ -85,10 +85,21 @@ export const grokAdapter: ProviderAdapter = {
     // 1) Browser / manual cookie path for %
     const browser = await fetchGrokBrowserUsage(includeBrowser);
     if (browser && browser.status === 'ok' && browser.windows.some((w) => w.usedPercent != null)) {
+      // Enrich with subscription tier when available (non-blocking metadata)
+      const sub = await fetchGrokSubscription().catch(() => null);
+      if (sub?.tier) {
+        browser.errorMessage = [
+          browser.errorMessage,
+          `tier=${sub.tier}`,
+          sub.billingPeriodEnd ? `periodEnd=${sub.billingPeriodEnd}` : '',
+        ]
+          .filter(Boolean)
+          .join(' · ');
+      }
       return browser;
     }
 
-    // 2) Local tokens + subscription tier note
+    // 2) Local tokens + subscription tier note (no %)
     const local = fetchGrokUsage();
     const sub = await fetchGrokSubscription();
     if (sub?.tier) {

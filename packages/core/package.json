@@ -13,7 +13,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "node --import tsx --test src/snapshot.test.ts"
+    "test": "node --import tsx --test src/snapshot.test.ts src/config.test.ts"
   },
   "devDependencies": {
     "tsx": "^4.20.3",

@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld('gaiPm', {
   refresh: () => ipcRenderer.invoke('refresh'),
   setMonitor: (id: string, on: boolean) =>
     ipcRenderer.invoke('set-monitor', id, on),
+  setMonitors: (updates: Array<{ providerId: string; monitor: boolean }>) =>
+    ipcRenderer.invoke('set-monitors', updates),
   setShowHealth: (id: string, on: boolean) =>
     ipcRenderer.invoke('set-show-health', id, on),
   setHealthInterval: (seconds: number) =>

@@ -1,4 +1,4 @@
-/* global gaiPm — Dedicated Settings window */
+/* global gaiPm — Settings window: authoritative for dashboard visibility */
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -28,48 +28,54 @@ function render(snap) {
   const root = $('#provider-settings');
   root.innerHTML = '';
 
-  const providers = [...snap.providers].sort((a, b) =>
-    a.meta.displayName.localeCompare(b.meta.displayName)
-  );
+  const providers = [...snap.providers].sort((a, b) => {
+    // Detected first, then name
+    const af = a.detect?.found ? 0 : 1;
+    const bf = b.detect?.found ? 0 : 1;
+    if (af !== bf) return af - bf;
+    return a.meta.displayName.localeCompare(b.meta.displayName);
+  });
 
   for (const p of providers) {
     const pref = snap.config.providers[p.meta.id] || {
       monitor: false,
-      showHealth: true,
+      showHealth: false,
+      userHidden: false,
     };
     const found = Boolean(p.detect?.found);
+    const on = pref.monitor === true;
     const row = document.createElement('div');
     row.className = 'provider-row' + (found ? '' : ' dim');
+    const statusBits = [
+      found ? 'detected' : 'not on this Mac',
+      on ? 'visible (usage + health)' : 'hidden',
+      p.lifecycle,
+    ];
     row.innerHTML = `
       <div class="provider-row-main">
         <div class="provider-name">${escapeHtml(p.meta.displayName)}</div>
-        <div class="provider-sub">${found ? 'detected' : 'not on this Mac'} · ${escapeHtml(p.lifecycle)}</div>
+        <div class="provider-sub">${escapeHtml(statusBits.join(' · '))}</div>
       </div>
       <label class="toggle">
-        <input type="checkbox" data-monitor="${escapeHtml(p.meta.id)}" ${pref.monitor ? 'checked' : ''} />
-        Monitor
-      </label>
-      <label class="toggle">
-        <input type="checkbox" data-health="${escapeHtml(p.meta.id)}" ${pref.showHealth ? 'checked' : ''} />
-        Health
+        <input type="checkbox" data-visible="${escapeHtml(p.meta.id)}" ${on ? 'checked' : ''} />
+        표시
       </label>
     `;
     root.appendChild(row);
   }
 
-  root.querySelectorAll('[data-monitor]').forEach((el) => {
+  root.querySelectorAll('[data-visible]').forEach((el) => {
     el.addEventListener('change', async (e) => {
-      const id = e.target.getAttribute('data-monitor');
-      const snap2 = await window.gaiPm.setMonitor(id, e.target.checked);
-      render(snap2);
-    });
-  });
-
-  root.querySelectorAll('[data-health]').forEach((el) => {
-    el.addEventListener('change', async (e) => {
-      const id = e.target.getAttribute('data-health');
-      const snap2 = await window.gaiPm.setShowHealth(id, e.target.checked);
-      render(snap2);
+      const id = e.target.getAttribute('data-visible');
+      const on = e.target.checked;
+      e.target.disabled = true;
+      try {
+        // Single toggle: usage + health together
+        const snap2 = await window.gaiPm.setMonitor(id, on);
+        render(snap2);
+      } finally {
+        e.target.disabled = false;
+      }
     });
   });
 }
@@ -86,6 +92,34 @@ async function boot() {
   });
   $('#browser-cookies').addEventListener('change', async (e) => {
     render(await window.gaiPm.setBrowserCookies(e.target.checked));
+  });
+
+  // Bulk actions: one IPC write + one refresh (not N full snapshots)
+  $('#btn-monitor-detected').addEventListener('click', async () => {
+    const snap = await window.gaiPm.getSnapshot();
+    if (!snap) return;
+    const updates = snap.providers
+      .filter((p) => {
+        const want = Boolean(p.detect?.found);
+        const cur = snap.config.providers[p.meta.id]?.monitor === true;
+        return want !== cur;
+      })
+      .map((p) => ({
+        providerId: p.meta.id,
+        monitor: Boolean(p.detect?.found),
+      }));
+    if (updates.length === 0) return;
+    render(await window.gaiPm.setMonitors(updates));
+  });
+
+  $('#btn-monitor-none').addEventListener('click', async () => {
+    const snap = await window.gaiPm.getSnapshot();
+    if (!snap) return;
+    const updates = snap.providers
+      .filter((p) => snap.config.providers[p.meta.id]?.monitor)
+      .map((p) => ({ providerId: p.meta.id, monitor: false }));
+    if (updates.length === 0) return;
+    render(await window.gaiPm.setMonitors(updates));
   });
 
   window.gaiPm.onSnapshot(render);

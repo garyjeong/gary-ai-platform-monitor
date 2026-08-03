@@ -1,5 +1,5 @@
 /**
- * Electron main — tray (icon only) + status popover + separate Settings window.
+ * Electron main — tray (icon only) + status dashboard + separate Settings.
  * No aggregate "AI n%" tray title. No outage notifications.
  */
 
@@ -21,6 +21,7 @@ import {
   takeSnapshot,
   updateHealthInterval,
   updateMonitor,
+  updateMonitors,
   updateIncludeBrowserCookies,
   updateOpenAtLogin,
   updateShowHealth,
@@ -34,7 +35,11 @@ let statusWin: BrowserWindow | null = null;
 let settingsWin: BrowserWindow | null = null;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let latest: FullSnapshot | null = null;
-let refreshing = false;
+
+/** Refresh mutex + queue so settings toggles never drop updates */
+let refreshInFlight: Promise<void> | null = null;
+let refreshQueued = false;
+let refreshQueuedReason = 'queued';
 
 const isMac = process.platform === 'darwin';
 
@@ -53,8 +58,8 @@ function sharedWebPrefs() {
 
 function createStatusWindow(): BrowserWindow {
   const w = new BrowserWindow({
-    width: 400,
-    height: 560,
+    width: 420,
+    height: 580,
     show: false,
     frame: false,
     resizable: true,
@@ -76,8 +81,8 @@ function createStatusWindow(): BrowserWindow {
 
 function createSettingsWindow(): BrowserWindow {
   const w = new BrowserWindow({
-    width: 480,
-    height: 640,
+    width: 520,
+    height: 680,
     show: false,
     frame: true,
     title: 'AI Platform Monitor — Settings',
@@ -120,7 +125,6 @@ function positionNearTray(w: BrowserWindow): void {
 
 function updateTrayChrome(snap: FullSnapshot): void {
   if (!tray) return;
-  // Icon only — never "AI 93%"
   tray.setTitle('');
   const lines = snap.menuBar.lines ?? [];
   const tip =
@@ -140,23 +144,47 @@ function updateTrayChrome(snap: FullSnapshot): void {
 }
 
 function broadcast(snap: FullSnapshot): void {
-  statusWin?.webContents.send('snapshot', snap);
-  settingsWin?.webContents.send('snapshot', snap);
+  if (statusWin && !statusWin.isDestroyed()) {
+    statusWin.webContents.send('snapshot', snap);
+  }
+  if (settingsWin && !settingsWin.isDestroyed()) {
+    settingsWin.webContents.send('snapshot', snap);
+  }
 }
 
-async function refresh(reason = 'poll'): Promise<void> {
-  if (refreshing) return;
-  refreshing = true;
-  try {
-    latest = await takeSnapshot();
-    updateTrayChrome(latest);
-    broadcast(latest);
-    schedulePoll();
-  } catch (err) {
-    console.error(`[gai-pm] refresh failed (${reason})`, err);
-  } finally {
-    refreshing = false;
+/**
+ * Coalescing refresh: concurrent callers wait for one run, then at most one follow-up.
+ * Settings toggles always get a fresh snapshot after their config write.
+ */
+async function refresh(reason = 'poll'): Promise<FullSnapshot | null> {
+  if (refreshInFlight) {
+    refreshQueued = true;
+    refreshQueuedReason = reason;
+    await refreshInFlight;
+    return latest;
   }
+
+  refreshInFlight = (async () => {
+    try {
+      do {
+        refreshQueued = false;
+        const why = refreshQueuedReason;
+        try {
+          latest = await takeSnapshot();
+          updateTrayChrome(latest);
+          broadcast(latest);
+          schedulePoll();
+        } catch (err) {
+          console.error(`[gai-pm] refresh failed (${why})`, err);
+        }
+      } while (refreshQueued);
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+
+  await refreshInFlight;
+  return latest;
 }
 
 function schedulePoll(): void {
@@ -169,7 +197,7 @@ function schedulePoll(): void {
 }
 
 function toggleStatusWindow(): void {
-  if (!statusWin) statusWin = createStatusWindow();
+  if (!statusWin || statusWin.isDestroyed()) statusWin = createStatusWindow();
   if (statusWin.isVisible()) {
     statusWin.hide();
     return;
@@ -182,7 +210,9 @@ function toggleStatusWindow(): void {
 }
 
 function openSettingsWindow(): void {
-  if (!settingsWin) settingsWin = createSettingsWindow();
+  if (!settingsWin || settingsWin.isDestroyed()) {
+    settingsWin = createSettingsWindow();
+  }
   if (latest) settingsWin.webContents.send('snapshot', latest);
   settingsWin.show();
   settingsWin.focus();
@@ -203,8 +233,26 @@ function setupIpc(): void {
   ipcMain.handle(
     'set-monitor',
     async (_e, providerId: string, monitor: boolean) => {
-      updateMonitor(providerId, monitor);
+      updateMonitor(String(providerId), Boolean(monitor));
       await refresh('set-monitor');
+      return latest;
+    }
+  );
+
+  ipcMain.handle(
+    'set-monitors',
+    async (
+      _e,
+      updates: Array<{ providerId: string; monitor: boolean }>
+    ) => {
+      const list = Array.isArray(updates) ? updates : [];
+      updateMonitors(
+        list.map((u) => ({
+          providerId: String(u.providerId),
+          monitor: Boolean(u.monitor),
+        }))
+      );
+      await refresh('set-monitors');
       return latest;
     }
   );
@@ -212,14 +260,16 @@ function setupIpc(): void {
   ipcMain.handle(
     'set-show-health',
     async (_e, providerId: string, show: boolean) => {
-      updateShowHealth(providerId, show);
+      updateShowHealth(String(providerId), Boolean(show));
       await refresh('set-show-health');
       return latest;
     }
   );
 
   ipcMain.handle('set-health-interval', async (_e, seconds: number) => {
-    updateHealthInterval(seconds);
+    const n = Number(seconds);
+    if (!Number.isFinite(n)) return latest;
+    updateHealthInterval(n);
     await refresh('set-interval');
     return latest;
   });
@@ -270,6 +320,37 @@ function applyOpenAtLogin(open: boolean): void {
   }
 }
 
+function loadTrayIcon(): NativeImage {
+  const TRAY_PT = 20;
+  const baseCandidates = [
+    path.join(__dirname, 'icons', 'trayTemplate.png'),
+    path.join(__dirname, '..', 'build', 'trayTemplate.png'),
+  ];
+
+  for (const p of baseCandidates) {
+    try {
+      if (!fs.existsSync(p)) continue;
+      let img = nativeImage.createFromPath(p);
+      if (img.isEmpty()) continue;
+      const size = img.getSize();
+      if (size.width !== TRAY_PT || size.height !== TRAY_PT) {
+        img = img.resize({ width: TRAY_PT, height: TRAY_PT, quality: 'best' });
+      }
+      img.setTemplateImage(true);
+      return img;
+    } catch {
+      // next
+    }
+  }
+  const fallback = nativeImage.createFromDataURL(TRAY_FALLBACK_PNG);
+  const fb = fallback.resize({ width: TRAY_PT, height: TRAY_PT, quality: 'best' });
+  fb.setTemplateImage(true);
+  return fb;
+}
+
+const TRAY_FALLBACK_PNG =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAzUlEQVRYR+2WQQ6AIAwF6f0v3b0YN8bQQss2GmLiwjS0/2cKAuA/VwAvwAvgv8A9sHbP7Q0wA9YAGxADsQEbEAOxARsQA7EBGxADsQEbEAOxARsQA7EBGxADsQEbEAOxARsQA7EBGxADsQEbkP0C9sDWPXc3wA5YAxtgB2LABmwgBmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmL4AHxJ/QHkX3sMAAAAAElFTkSuQmCC';
+
 app.whenReady().then(async () => {
   if (isMac) {
     app.dock?.hide();
@@ -280,7 +361,7 @@ app.whenReady().then(async () => {
 
   tray = new Tray(loadTrayIcon());
   tray.setIgnoreDoubleClickEvents(true);
-  tray.setTitle(''); // never show aggregate %
+  tray.setTitle('');
   tray.on('click', () => toggleStatusWindow());
   tray.on('right-click', () => {
     const menu = Menu.buildFromTemplate([
@@ -301,41 +382,3 @@ app.whenReady().then(async () => {
 app.on('window-all-closed', () => {
   /* tray app */
 });
-
-function loadTrayIcon(): NativeImage {
-  // Menu bar target: ~20 logical points (readable, not oversized).
-  const TRAY_PT = 20;
-  const baseCandidates = [
-    path.join(__dirname, 'icons', 'trayTemplate.png'),
-    path.join(__dirname, '..', 'build', 'trayTemplate.png'),
-  ];
-
-  for (const p of baseCandidates) {
-    try {
-      if (!fs.existsSync(p)) continue;
-      let img = nativeImage.createFromPath(p);
-      if (img.isEmpty()) continue;
-
-      const size = img.getSize();
-      // Keep tray at ~20pt; only downscale if asset is larger
-      if (size.width !== TRAY_PT || size.height !== TRAY_PT) {
-        img = img.resize({ width: TRAY_PT, height: TRAY_PT, quality: 'best' });
-      }
-
-      // macOS: template = monochrome, follows menu bar light/dark
-      img.setTemplateImage(true);
-      return img;
-    } catch {
-      // try next
-    }
-  }
-  // Fallback simple ring glyph
-  const fallback = nativeImage.createFromDataURL(TRAY_FALLBACK_PNG);
-  const fb = fallback.resize({ width: TRAY_PT, height: TRAY_PT, quality: 'best' });
-  fb.setTemplateImage(true);
-  return fb;
-}
-
-/** Minimal ring glyph (template-style) if assets missing */
-const TRAY_FALLBACK_PNG =
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAzUlEQVRYR+2WQQ6AIAwF6f0v3b0YN8bQQss2GmLiwjS0/2cKAuA/VwAvwAvgv8A9sHbP7Q0wA9YAGxADsQEbEAOxARsQA7EBGxADsQEbEAOxARsQA7EBGxADsQEbEAOxARsQA7EBGxADsQEbkP0C9sDWPXc3wA5YAxtgB2LABmwgBmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmL4AHxJ/QHkX3sMAAAAAElFTkSuQmCC';
