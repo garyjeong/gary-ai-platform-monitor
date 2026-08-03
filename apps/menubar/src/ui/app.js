@@ -77,6 +77,13 @@ function render(snap) {
   if (loginEl && loginEl.checked !== Boolean(snap.config.openAtLogin)) {
     loginEl.checked = Boolean(snap.config.openAtLogin);
   }
+  const cookieEl = $('#browser-cookies');
+  if (
+    cookieEl &&
+    cookieEl.checked !== Boolean(snap.config.scan?.includeBrowserCookies)
+  ) {
+    cookieEl.checked = Boolean(snap.config.scan?.includeBrowserCookies);
+  }
 
   const root = $('#providers');
   root.innerHTML = '';
@@ -191,6 +198,10 @@ async function boot() {
   });
   $('#open-at-login').addEventListener('change', async (e) => {
     const snap = await window.gaiPm.setOpenAtLogin(e.target.checked);
+    render(snap);
+  });
+  $('#browser-cookies').addEventListener('change', async (e) => {
+    const snap = await window.gaiPm.setBrowserCookies(e.target.checked);
     render(snap);
   });
 

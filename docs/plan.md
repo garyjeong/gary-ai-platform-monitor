@@ -59,10 +59,11 @@ packages/adapters/*   → claude | codex | grok
 - [x] Electron menu bar (monitor toggles, health interval, silent health badges)
 - [x] xAI/Grok health via RSS (`status.x.ai/feed.xml`)
 - [x] Open at login (Electron login item + optional LaunchAgent scripts)
-- [x] Grok % research documented (`docs/grok-quota.md`) — still no official % API
-- [ ] Optional: Grok browser cookie % path
-- [ ] Optional: more adapters
-- [ ] Optional: notarized dmg / Homebrew cask
+- [x] Grok % research documented (`docs/grok-quota.md`)
+- [x] Grok browser cookie % path (manual cookie + best-effort Chrome import)
+- [x] Extra adapters: Gemini, OpenRouter, Cursor
+- [x] DMG packaging scripts + GitHub Release workflow + Homebrew cask template
+- [ ] Notarization (requires user's Apple Developer cert — documented)
 
 ## Commands
 

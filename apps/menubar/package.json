@@ -1,8 +1,9 @@
 {
   "name": "@gary-ai-platform-monitor/menubar",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "macOS menu bar app for AI platform usage + health",
+  "author": "garyjeong",
   "license": "MIT",
   "type": "module",
   "main": "./dist/main.js",
@@ -11,27 +12,33 @@
     "start": "npm run build && electron .",
     "dev": "npm run build && electron .",
     "pack": "npm run build && electron-builder --mac dir",
-    "dist": "npm run build && electron-builder --mac dmg"
+    "dist": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg"
   },
   "dependencies": {
     "@gary-ai-platform-monitor/runtime": "0.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",
-    "electron": "^37.10.3",
-    "electron-builder": "^26.0.12",
+    "electron": "37.10.3",
+    "electron-builder": "26.0.12",
     "typescript": "^5.8.3"
   },
   "build": {
     "appId": "com.garyjeong.ai-platform-monitor",
     "productName": "AI Platform Monitor",
+    "electronVersion": "37.10.3",
     "mac": {
       "category": "public.app-category.developer-tools",
       "target": [
-        "dmg",
+        {
+          "target": "dmg",
+          "arch": ["arm64"]
+        },
         "dir"
       ],
-      "identity": null
+      "identity": null,
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false
     },
     "files": [
       "dist/**/*",
@@ -42,6 +49,7 @@
     },
     "extraMetadata": {
       "main": "dist/main.js"
-    }
+    },
+    "artifactName": "AI-Platform-Monitor-${version}-${arch}.${ext}"
   }
 }

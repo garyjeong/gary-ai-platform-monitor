@@ -1,6 +1,5 @@
 /**
- * Wired runtime: seed adapters + config + snapshot + health.
- * Used by CLI and the menu bar app.
+ * Wired runtime: all seed adapters + config + snapshot + health.
  */
 
 import {
@@ -22,15 +21,25 @@ import { fetchProviderHealth } from '@gary-ai-platform-monitor/health';
 import { claudeAdapter } from '@gary-ai-platform-monitor/adapter-claude';
 import { codexAdapter } from '@gary-ai-platform-monitor/adapter-codex';
 import { grokAdapter } from '@gary-ai-platform-monitor/adapter-grok';
+import { geminiAdapter } from '@gary-ai-platform-monitor/adapter-gemini';
+import { openrouterAdapter } from '@gary-ai-platform-monitor/adapter-openrouter';
+import { cursorAdapter } from '@gary-ai-platform-monitor/adapter-cursor';
 
 let registered = false;
 
 export function ensureSeedAdapters(): ProviderAdapter[] {
   if (!registered) {
     clearAdapters();
-    registerAdapter(claudeAdapter);
-    registerAdapter(codexAdapter);
-    registerAdapter(grokAdapter);
+    for (const a of [
+      claudeAdapter,
+      codexAdapter,
+      grokAdapter,
+      geminiAdapter,
+      openrouterAdapter,
+      cursorAdapter,
+    ]) {
+      registerAdapter(a);
+    }
     registered = true;
   }
   return listAdapters();
@@ -77,6 +86,16 @@ export function updateHealthInterval(seconds: number): AppConfig {
 
 export function updateOpenAtLogin(openAtLogin: boolean): AppConfig {
   const next = setOpenAtLogin(loadConfig(), openAtLogin);
+  saveConfig(next);
+  return next;
+}
+
+export function updateIncludeBrowserCookies(include: boolean): AppConfig {
+  const cfg = loadConfig();
+  const next: AppConfig = {
+    ...cfg,
+    scan: { ...cfg.scan, includeBrowserCookies: include },
+  };
   saveConfig(next);
   return next;
 }

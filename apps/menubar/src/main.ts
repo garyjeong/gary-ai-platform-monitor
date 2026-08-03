@@ -19,6 +19,7 @@ import {
   takeSnapshot,
   updateHealthInterval,
   updateMonitor,
+  updateIncludeBrowserCookies,
   updateOpenAtLogin,
   updateShowHealth,
   type FullSnapshot,
@@ -175,6 +176,12 @@ function setupIpc(): void {
     applyOpenAtLogin(Boolean(open));
     updateOpenAtLogin(Boolean(open));
     await refresh('set-open-at-login');
+    return latest;
+  });
+
+  ipcMain.handle('set-browser-cookies', async (_e, on: boolean) => {
+    updateIncludeBrowserCookies(Boolean(on));
+    await refresh('set-browser-cookies');
     return latest;
   });
 

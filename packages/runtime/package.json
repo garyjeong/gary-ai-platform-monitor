@@ -17,7 +17,10 @@
   "dependencies": {
     "@gary-ai-platform-monitor/adapter-claude": "0.1.0",
     "@gary-ai-platform-monitor/adapter-codex": "0.1.0",
+    "@gary-ai-platform-monitor/adapter-cursor": "0.2.1",
+    "@gary-ai-platform-monitor/adapter-gemini": "0.2.1",
     "@gary-ai-platform-monitor/adapter-grok": "0.1.0",
+    "@gary-ai-platform-monitor/adapter-openrouter": "0.2.1",
     "@gary-ai-platform-monitor/core": "0.1.0",
     "@gary-ai-platform-monitor/health": "0.1.0"
   },

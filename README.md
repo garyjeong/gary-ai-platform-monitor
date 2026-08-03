@@ -2,17 +2,18 @@
 
 macOS **menu bar** monitor for AI platform **usage quotas** and **official status health**.
 
-Automatically discovers local logins (Claude Code, Codex, Grok), shows usage as **percent** when the platform exposes it, and polls public status pages like [status.claude.com](https://status.claude.com). **No outage notifications** — UI only.
+Automatically discovers local logins, shows usage as **percent** when available, and polls public status pages. **No outage notifications** — UI only.
 
 ## Features
 
 | Feature | Description |
 |---------|-------------|
-| **Auto-discover** | Detects Claude / Codex / Grok credentials & sessions on this Mac |
-| **Monitor toggles** | Enable/disable each platform in the popover Settings |
-| **Usage %** | Claude 5h/7d · Codex primary window · Grok tokens/cost (no %) |
-| **Health** | Public Statuspage (default every **30s**, min 10s) — badge only |
-| **Local only** | Tokens and usage stay on your machine |
+| **Auto-discover** | Claude, Codex, Grok, Gemini CLI, OpenRouter key, Cursor install |
+| **Monitor toggles** | Enable/disable each platform in Settings |
+| **Usage %** | Claude · Codex · Gemini · OpenRouter; Grok via browser cookie when available |
+| **Health** | Statuspage + xAI RSS (default **30s**) — badge only |
+| **Open at login** | Electron login item or LaunchAgent scripts |
+| **Local only** | Credentials stay on your machine |
 
 ## Requirements
 
@@ -55,14 +56,25 @@ npm test
 
 | Provider | Source | Output |
 |----------|--------|--------|
-| Claude | Claude Code OAuth → Anthropic usage API | 5h / 7d **%** |
-| Codex | `~/.codex/sessions/**/rollout-*.jsonl` | primary **%** |
-| Grok | `~/.grok/sessions` | tokens + USD (`usedPercent: null`) |
+| Claude | Claude Code OAuth | 5h / 7d **%** |
+| Codex | local rollout `rate_limits` | primary **%** |
+| Grok | sessions tokens/USD; optional browser Cookie → % | see [docs/grok-quota.md](./docs/grok-quota.md) |
+| Gemini | `~/.gemini/oauth_creds.json` → retrieveUserQuota | model **%** |
+| OpenRouter | `OPENROUTER_API_KEY` or key file | credit **%** / spend |
+| Cursor | browser Cookie / `CURSOR_COOKIE` | plan **%** when API returns it |
 
-Optional Grok week alignment:
+Grok week alignment (local tokens):
 
 ```bash
 export GAI_PM_GROK_WEEK_ANCHOR='2026-08-04T14:19:00'
+```
+
+Grok browser % (recommended manual cookie):
+
+```bash
+# from browser DevTools Cookie header while logged into grok.com
+export GAI_PM_GROK_COOKIE='sso=...; sso-rw=...'
+# or write ~/.config/gary-ai-platform-monitor/grok.cookie
 ```
 
 ## Config
@@ -85,18 +97,17 @@ bash scripts/install-login-item.sh
 bash scripts/uninstall-login-item.sh
 ```
 
-## Packaging (optional)
+## Packaging / Homebrew
+
+See [docs/packaging.md](./docs/packaging.md).
 
 ```bash
-npm run build
-npm run dist -w @gary-ai-platform-monitor/menubar
+npm run dist:mac          # unsigned DMG → apps/menubar/release/
+# Homebrew cask template: homebrew/Casks/gary-ai-platform-monitor.rb
+# GitHub Actions: tag v* → builds release assets
 ```
 
-Produces artifacts under `apps/menubar/release/` (ad-hoc / unsigned unless you set signing).
-
-## Grok quota %
-
-Not available from CLI/local files yet. See [docs/grok-quota.md](./docs/grok-quota.md).
+**Notarization** needs your Apple Developer ID (documented; not runnable without secrets).
 
 ## Layout
 

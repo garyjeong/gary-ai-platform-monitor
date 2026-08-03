@@ -1,32 +1,30 @@
-# Grok quota % — research note
+# Grok quota %
 
-## Goal
-
-Show SuperGrok / subscription **used percent** like Claude and Codex.
-
-## What works today
+## Working paths
 
 | Path | Result |
 |------|--------|
-| Local `~/.grok/sessions/**/updates.jsonl` | Tokens + USD cost for rolling 7d / anchored weekly window. **No quota fields.** |
-| CLI `grok -p` / headless | Usage in session stream only; no rate-limit % |
-| OIDC token → `cli-chat-proxy.grok.com` / `api.x.ai` usage paths | Previously probed as **404** (token valid; path not exposed) |
-| Official public API | Rate limits for **API teams** (TPM/RPS), not consumer SuperGrok plan % |
+| Local `~/.grok/sessions` | Tokens + USD (no %) |
+| CLI OIDC → `GET /rest/subscriptions` | Tier + billing period (no usage %) |
+| CLI OIDC → `POST /rest/rate-limits` | **403** `oauth2-auth-forbidden` |
+| Browser Cookie → `POST /rest/rate-limits` | Target for % when session cookies work |
 
-## Web UI
+## How to enable browser %
 
-`grok.com` settings → usage shows weekly **%** and reset time. That value is served by **private web APIs** behind a browser session (cookies), not the CLI OIDC surface.
+1. Log into [grok.com](https://grok.com) in Chrome (or Brave/Arc).
+2. Prefer **manual Cookie** (most reliable; Chrome v20 encryption often blocks auto-decrypt):
+   - DevTools → Network → any `grok.com` request → Request Headers → `Cookie:`
+   - Save to `~/.config/gary-ai-platform-monitor/grok.cookie` **or**
+   - `export GAI_PM_GROK_COOKIE='sso=...; sso-rw=...'`
+3. Or turn on **Settings → Read browser cookies** in the menu bar app (uses Chrome Safe Storage; may fail on newer Chrome).
+4. `npm run usage` / refresh the app — if the web API returns percent fields, they appear as Grok windows.
 
-## Deferred approaches
+## Security
 
-1. **Browser cookie import** (Chrome Safe Storage) → call the same billing/usage endpoint the web app uses (fragile; ToS-sensitive).
-2. **`grok agent stdio` JSON-RPC** `x.ai/billing` if/when the CLI exposes a stable method (CodexBar-style).
-3. **Manual anchor only**: user pastes weekly limit once and we estimate % from local tokens (inaccurate; not implemented).
+- Cookie files are local secrets (mode 600 recommended).
+- Never commit `*.cookie` or paste cookies into issues.
+- App never uploads cookies.
 
-## Product decision (v0.2+)
+## Status health
 
-- Ship **tokens + cost** for Grok with `usedPercent: null`.
-- Align week with `GAI_PM_GROK_WEEK_ANCHOR` when set.
-- Health via **https://status.x.ai/feed.xml** (RSS) is separate and works without login.
-
-Revisit when xAI documents a stable subscription-quota API for consumer accounts.
+Independent of quota: `https://status.x.ai/feed.xml` (RSS).

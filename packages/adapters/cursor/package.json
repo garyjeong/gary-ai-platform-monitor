@@ -1,6 +1,6 @@
 {
-  "name": "@gary-ai-platform-monitor/adapter-grok",
-  "version": "0.1.0",
+  "name": "@gary-ai-platform-monitor/adapter-cursor",
+  "version": "0.2.1",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -12,8 +12,7 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "test": "node --import tsx --test src/usage.test.ts"
+    "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
     "@gary-ai-platform-monitor/browser-cookies": "0.2.1",
@@ -21,7 +20,6 @@
   },
   "devDependencies": {
     "@types/node": "^22.20.1",
-    "tsx": "^4.20.3",
     "typescript": "^5.8.3"
   }
 }

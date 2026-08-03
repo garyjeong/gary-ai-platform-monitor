@@ -1,6 +1,6 @@
 {
-  "name": "@gary-ai-platform-monitor/adapter-grok",
-  "version": "0.1.0",
+  "name": "@gary-ai-platform-monitor/adapter-openrouter",
+  "version": "0.2.1",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -16,7 +16,6 @@
     "test": "node --import tsx --test src/usage.test.ts"
   },
   "dependencies": {
-    "@gary-ai-platform-monitor/browser-cookies": "0.2.1",
     "@gary-ai-platform-monitor/core": "0.1.0"
   },
   "devDependencies": {

@@ -70,7 +70,9 @@ export async function buildSnapshot(deps: SnapshotDeps): Promise<FullSnapshot> {
 
     if (detect.found && pref.monitor) {
       try {
-        usage = await adapter.fetchUsage();
+        usage = await adapter.fetchUsage({
+          includeBrowserCookies: config.scan.includeBrowserCookies,
+        });
       } catch (err) {
         usage = {
           providerId: adapter.meta.id,
