@@ -19,6 +19,7 @@ import {
   takeSnapshot,
   updateHealthInterval,
   updateMonitor,
+  updateOpenAtLogin,
   updateShowHealth,
   type FullSnapshot,
 } from '@gary-ai-platform-monitor/runtime';
@@ -170,6 +171,17 @@ function setupIpc(): void {
     return latest;
   });
 
+  ipcMain.handle('set-open-at-login', async (_e, open: boolean) => {
+    applyOpenAtLogin(Boolean(open));
+    updateOpenAtLogin(Boolean(open));
+    await refresh('set-open-at-login');
+    return latest;
+  });
+
+  ipcMain.handle('get-open-at-login', () => {
+    return app.getLoginItemSettings().openAtLogin;
+  });
+
   ipcMain.handle('quit', () => {
     app.quit();
   });
@@ -182,10 +194,27 @@ function setupIpc(): void {
   });
 }
 
+function applyOpenAtLogin(open: boolean): void {
+  try {
+    app.setLoginItemSettings({
+      openAtLogin: open,
+      openAsHidden: true,
+      path: process.execPath,
+      args: app.isPackaged ? [] : [app.getAppPath()],
+    });
+  } catch (err) {
+    console.error('[gai-pm] setLoginItemSettings failed', err);
+  }
+}
+
 app.whenReady().then(async () => {
   if (isMac) {
     app.dock?.hide();
   }
+
+  // Sync login item with saved config (and OS state)
+  const cfg = loadConfig();
+  applyOpenAtLogin(cfg.openAtLogin);
 
   // Empty 16x16 template-ish icon; title carries the data on macOS
   const icon = nativeImage.createEmpty();

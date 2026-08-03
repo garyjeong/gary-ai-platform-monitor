@@ -74,6 +74,17 @@ export GAI_PM_GROK_WEEK_ANCHOR='2026-08-04T14:19:00'
 - `providers.<id>.showHealth` — poll status page for that provider
 - `defaults.autoEnableOnFirstConnect` — seed `monitor: true` on first detect
 
+## Open at login
+
+In the app popover: **Settings → Open at login** (preferred).
+
+Optional LaunchAgent (dev tree):
+
+```bash
+bash scripts/install-login-item.sh
+bash scripts/uninstall-login-item.sh
+```
+
 ## Packaging (optional)
 
 ```bash
@@ -82,6 +93,10 @@ npm run dist -w @gary-ai-platform-monitor/menubar
 ```
 
 Produces artifacts under `apps/menubar/release/` (ad-hoc / unsigned unless you set signing).
+
+## Grok quota %
+
+Not available from CLI/local files yet. See [docs/grok-quota.md](./docs/grok-quota.md).
 
 ## Layout
 

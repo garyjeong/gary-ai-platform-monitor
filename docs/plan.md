@@ -57,7 +57,10 @@ packages/adapters/*   → claude | codex | grok
 - [x] Snapshot engine + auto-enable prefs
 - [x] CLI `gai-pm`
 - [x] Electron menu bar (monitor toggles, health interval, silent health badges)
-- [ ] Optional: Grok browser % path
+- [x] xAI/Grok health via RSS (`status.x.ai/feed.xml`)
+- [x] Open at login (Electron login item + optional LaunchAgent scripts)
+- [x] Grok % research documented (`docs/grok-quota.md`) — still no official % API
+- [ ] Optional: Grok browser cookie % path
 - [ ] Optional: more adapters
 - [ ] Optional: notarized dmg / Homebrew cask
 

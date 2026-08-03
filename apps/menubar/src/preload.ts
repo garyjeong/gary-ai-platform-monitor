@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld('gaiPm', {
     ipcRenderer.invoke('set-show-health', id, on),
   setHealthInterval: (seconds: number) =>
     ipcRenderer.invoke('set-health-interval', seconds),
+  setOpenAtLogin: (on: boolean) => ipcRenderer.invoke('set-open-at-login', on),
+  getOpenAtLogin: () => ipcRenderer.invoke('get-open-at-login'),
   quit: () => ipcRenderer.invoke('quit'),
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
   onSnapshot: (cb: (snap: unknown) => void) => {

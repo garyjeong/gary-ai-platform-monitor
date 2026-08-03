@@ -3,7 +3,7 @@
  *
  * detect: ~/.grok auth / sessions
  * fetchUsage: local session aggregation (tokens/USD; percent not available)
- * health: status.x.ai (RSS/custom — Phase 4)
+ * health: status.x.ai/feed.xml (RSS)
  */
 
 import * as fs from 'node:fs';
@@ -27,6 +27,7 @@ export const grokAdapter: ProviderAdapter = {
     status: {
       pageUrl: 'https://status.x.ai',
       strategy: 'rss',
+      summaryUrl: 'https://status.x.ai/feed.xml',
     },
     capabilities: {
       percentWindows: false,

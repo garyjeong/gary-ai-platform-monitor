@@ -11,6 +11,7 @@ import {
   loadConfig,
   registerAdapter,
   saveConfig,
+  setOpenAtLogin,
   setProviderMonitor,
   setProviderShowHealth,
   type AppConfig,
@@ -70,6 +71,12 @@ export function updateHealthInterval(seconds: number): AppConfig {
       intervalSeconds: Math.min(60, Math.max(10, seconds)),
     },
   };
+  saveConfig(next);
+  return next;
+}
+
+export function updateOpenAtLogin(openAtLogin: boolean): AppConfig {
+  const next = setOpenAtLogin(loadConfig(), openAtLogin);
   saveConfig(next);
   return next;
 }

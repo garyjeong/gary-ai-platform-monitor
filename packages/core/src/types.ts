@@ -143,6 +143,8 @@ export interface AppConfig {
     intervalSeconds: number;
     showInMenuBar: boolean;
   };
+  /** Start menu bar app when the user logs into macOS (Electron login item) */
+  openAtLogin: boolean;
   /** Notifications are intentionally unsupported in v1 */
   providers: Record<string, ProviderPreference>;
   defaults: {
@@ -160,6 +162,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     intervalSeconds: 30,
     showInMenuBar: true,
   },
+  openAtLogin: false,
   providers: {},
   defaults: {
     autoEnableOnFirstConnect: true,

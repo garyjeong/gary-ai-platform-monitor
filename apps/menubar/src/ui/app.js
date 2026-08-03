@@ -73,6 +73,11 @@ function render(snap) {
   const sel = $('#health-interval');
   if (sel.value !== interval) sel.value = interval;
 
+  const loginEl = $('#open-at-login');
+  if (loginEl && loginEl.checked !== Boolean(snap.config.openAtLogin)) {
+    loginEl.checked = Boolean(snap.config.openAtLogin);
+  }
+
   const root = $('#providers');
   root.innerHTML = '';
 
@@ -182,6 +187,10 @@ async function boot() {
   $('#btn-quit').addEventListener('click', () => window.gaiPm.quit());
   $('#health-interval').addEventListener('change', async (e) => {
     const snap = await window.gaiPm.setHealthInterval(Number(e.target.value));
+    render(snap);
+  });
+  $('#open-at-login').addEventListener('change', async (e) => {
+    const snap = await window.gaiPm.setOpenAtLogin(e.target.checked);
     render(snap);
   });
 

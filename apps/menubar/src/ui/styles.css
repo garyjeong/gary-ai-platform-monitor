@@ -244,6 +244,14 @@ button.ghost {
   gap: 12px;
 }
 
+.toggle-row {
+  margin-top: 10px;
+}
+
+.toggle-row input {
+  accent-color: var(--accent);
+}
+
 select {
   background: var(--panel);
   color: var(--text);

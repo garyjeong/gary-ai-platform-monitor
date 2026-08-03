@@ -91,7 +91,13 @@ function mergeConfig(base: AppConfig, raw: Partial<AppConfig>): AppConfig {
   return normalizeHealthInterval({
     scan: { ...base.scan, ...raw.scan },
     health: { ...base.health, ...raw.health },
+    openAtLogin:
+      typeof raw.openAtLogin === 'boolean' ? raw.openAtLogin : base.openAtLogin,
     providers: { ...base.providers, ...raw.providers },
     defaults: { ...base.defaults, ...raw.defaults },
   });
+}
+
+export function setOpenAtLogin(config: AppConfig, openAtLogin: boolean): AppConfig {
+  return { ...config, openAtLogin };
 }

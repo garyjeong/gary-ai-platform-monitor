@@ -1,7 +1,9 @@
 import type { HealthResult, ProviderAdapter, ProviderStatusMeta } from '@gary-ai-platform-monitor/core';
 import { fetchStatuspageHealth } from './statuspage.js';
+import { fetchRssHealth } from './rss.js';
 
 export { parseStatuspageSummary, fetchStatuspageHealth } from './statuspage.js';
+export { parseRssHealth, fetchRssHealth } from './rss.js';
 
 /**
  * Poll health for adapters that declare status metadata.
@@ -27,12 +29,12 @@ export async function fetchProviderHealth(
     case 'statuspage_v2':
       return fetchStatuspageHealth(providerId, meta, options);
     case 'rss':
+      return fetchRssHealth(providerId, meta, options);
     case 'custom':
-      // Phase 4+: Grok/xAI and other non-Statuspage sources
       return {
         providerId,
         indicator: 'unknown',
-        description: `Health strategy "${meta.strategy}" not implemented yet`,
+        description: 'Health strategy "custom" not implemented',
         pageUrl: meta.pageUrl,
         components: [],
         updatedAt: Date.now(),
