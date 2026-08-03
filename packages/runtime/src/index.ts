@@ -1,5 +1,5 @@
 /**
- * Wired runtime: all seed adapters + config + snapshot + health.
+ * Wired runtime: all registered adapters + config + snapshot + health.
  */
 
 import {
@@ -24,6 +24,10 @@ import { grokAdapter } from '@gary-ai-platform-monitor/adapter-grok';
 import { geminiAdapter } from '@gary-ai-platform-monitor/adapter-gemini';
 import { openrouterAdapter } from '@gary-ai-platform-monitor/adapter-openrouter';
 import { cursorAdapter } from '@gary-ai-platform-monitor/adapter-cursor';
+import { copilotAdapter } from '@gary-ai-platform-monitor/adapter-copilot';
+import { ollamaAdapter } from '@gary-ai-platform-monitor/adapter-ollama';
+import { opencodeAdapter } from '@gary-ai-platform-monitor/adapter-opencode';
+import { APP_ADAPTERS } from '@gary-ai-platform-monitor/adapter-apps';
 
 let registered = false;
 
@@ -37,6 +41,10 @@ export function ensureSeedAdapters(): ProviderAdapter[] {
       geminiAdapter,
       openrouterAdapter,
       cursorAdapter,
+      copilotAdapter,
+      ollamaAdapter,
+      opencodeAdapter,
+      ...APP_ADAPTERS,
     ]) {
       registerAdapter(a);
     }

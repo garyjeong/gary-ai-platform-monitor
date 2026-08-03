@@ -8,7 +8,7 @@ Automatically discovers local logins, shows usage as **percent** when available,
 
 | Feature | Description |
 |---------|-------------|
-| **Auto-discover** | Claude, Codex, Grok, Gemini CLI, OpenRouter key, Cursor install |
+| **Auto-discover** | 15 providers: Claude, Codex, Grok, Gemini, OpenRouter, Cursor, Copilot, Ollama, OpenCode, ChatGPT Desktop, Warp, Factory, Amp, Kiro, Kilo |
 | **Monitor toggles** | Enable/disable each platform in Settings |
 | **Usage %** | Claude · Codex · Gemini · OpenRouter; Grok via browser cookie when available |
 | **Health** | Statuspage + xAI RSS (default **30s**) — badge only |
@@ -62,6 +62,10 @@ npm test
 | Gemini | `~/.gemini/oauth_creds.json` → retrieveUserQuota | model **%** |
 | OpenRouter | `OPENROUTER_API_KEY` or key file | credit **%** / spend |
 | Cursor | browser Cookie / `CURSOR_COOKIE` | plan **%** when API returns it |
+| Copilot | `gh auth token` → copilot_internal | chat/completions **%** |
+| Ollama | local daemon `api/tags` | model count (no cloud %) |
+| OpenCode | auth.json + local DB | session/message counts |
+| ChatGPT Desktop / Warp / Factory / Amp / Kiro / Kilo | local install detect | presence / notes |
 
 Grok week alignment (local tokens):
 

@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@gary-ai-platform-monitor/health": "0.1.0",
-    "@gary-ai-platform-monitor/runtime": "0.2.0"
+    "@gary-ai-platform-monitor/runtime": "0.3.1"
   },
   "devDependencies": {
     "typescript": "^5.8.3"

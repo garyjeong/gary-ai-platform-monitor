@@ -1,6 +1,6 @@
 {
   "name": "gary-ai-platform-monitor",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "macOS menu bar app that discovers local AI platform logins, monitors usage quotas as percentages, and shows official status-page health.",
   "license": "MIT",
@@ -11,7 +11,7 @@
     "apps/*"
   ],
   "scripts": {
-    "build": "npm run build -w @gary-ai-platform-monitor/core && npm run build -w @gary-ai-platform-monitor/health && npm run build -w @gary-ai-platform-monitor/browser-cookies && npm run build -w @gary-ai-platform-monitor/adapter-claude && npm run build -w @gary-ai-platform-monitor/adapter-codex && npm run build -w @gary-ai-platform-monitor/adapter-grok && npm run build -w @gary-ai-platform-monitor/adapter-gemini && npm run build -w @gary-ai-platform-monitor/adapter-openrouter && npm run build -w @gary-ai-platform-monitor/adapter-cursor && npm run build -w @gary-ai-platform-monitor/runtime && npm run build -w @gary-ai-platform-monitor/cli && npm run build -w @gary-ai-platform-monitor/menubar",
+    "build": "npm run build -w @gary-ai-platform-monitor/core && npm run build -w @gary-ai-platform-monitor/health && npm run build -w @gary-ai-platform-monitor/browser-cookies && npm run build -w @gary-ai-platform-monitor/adapter-claude && npm run build -w @gary-ai-platform-monitor/adapter-codex && npm run build -w @gary-ai-platform-monitor/adapter-grok && npm run build -w @gary-ai-platform-monitor/adapter-gemini && npm run build -w @gary-ai-platform-monitor/adapter-openrouter && npm run build -w @gary-ai-platform-monitor/adapter-cursor && npm run build -w @gary-ai-platform-monitor/adapter-copilot && npm run build -w @gary-ai-platform-monitor/adapter-ollama && npm run build -w @gary-ai-platform-monitor/adapter-opencode && npm run build -w @gary-ai-platform-monitor/adapter-apps && npm run build -w @gary-ai-platform-monitor/runtime && npm run build -w @gary-ai-platform-monitor/cli && npm run build -w @gary-ai-platform-monitor/menubar",
     "typecheck": "npm run build",
     "scan": "node --import tsx scripts/scan.ts",
     "health": "node --import tsx scripts/health.ts",
@@ -19,7 +19,7 @@
     "snapshot": "npm run build -w @gary-ai-platform-monitor/runtime && npm run build -w @gary-ai-platform-monitor/cli && node apps/cli/dist/cli.js snapshot",
     "app": "npm run build && node scripts/ensure-electron.mjs && npm run start -w @gary-ai-platform-monitor/menubar",
     "postinstall": "node scripts/ensure-electron.mjs",
-    "test": "npm run test -w @gary-ai-platform-monitor/core --if-present && npm run test -w @gary-ai-platform-monitor/health --if-present && npm run test -w @gary-ai-platform-monitor/adapter-claude --if-present && npm run test -w @gary-ai-platform-monitor/adapter-codex --if-present && npm run test -w @gary-ai-platform-monitor/adapter-gemini --if-present && npm run test -w @gary-ai-platform-monitor/adapter-openrouter --if-present && npm run test -w @gary-ai-platform-monitor/adapter-grok --if-present",
+    "test": "npm run test -w @gary-ai-platform-monitor/core --if-present && npm run test -w @gary-ai-platform-monitor/health --if-present && npm run test -w @gary-ai-platform-monitor/adapter-claude --if-present && npm run test -w @gary-ai-platform-monitor/adapter-codex --if-present && npm run test -w @gary-ai-platform-monitor/adapter-gemini --if-present && npm run test -w @gary-ai-platform-monitor/adapter-openrouter --if-present && npm run test -w @gary-ai-platform-monitor/adapter-grok --if-present && npm run test -w @gary-ai-platform-monitor/adapter-copilot --if-present",
     "dist:mac": "npm run build && npm run dist -w @gary-ai-platform-monitor/menubar"
   },
   "engines": {

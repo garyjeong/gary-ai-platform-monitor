@@ -15,7 +15,7 @@
     "dist": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg"
   },
   "dependencies": {
-    "@gary-ai-platform-monitor/runtime": "0.2.0"
+    "@gary-ai-platform-monitor/runtime": "0.3.1"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",

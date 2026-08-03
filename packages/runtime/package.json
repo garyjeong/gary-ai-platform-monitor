@@ -1,6 +1,6 @@
 {
   "name": "@gary-ai-platform-monitor/runtime",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -15,11 +15,15 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@gary-ai-platform-monitor/adapter-apps": "0.3.1",
     "@gary-ai-platform-monitor/adapter-claude": "0.1.0",
     "@gary-ai-platform-monitor/adapter-codex": "0.1.0",
+    "@gary-ai-platform-monitor/adapter-copilot": "0.3.1",
     "@gary-ai-platform-monitor/adapter-cursor": "0.2.1",
     "@gary-ai-platform-monitor/adapter-gemini": "0.2.1",
     "@gary-ai-platform-monitor/adapter-grok": "0.1.0",
+    "@gary-ai-platform-monitor/adapter-ollama": "0.3.1",
+    "@gary-ai-platform-monitor/adapter-opencode": "0.3.1",
     "@gary-ai-platform-monitor/adapter-openrouter": "0.2.1",
     "@gary-ai-platform-monitor/core": "0.1.0",
     "@gary-ai-platform-monitor/health": "0.1.0"
