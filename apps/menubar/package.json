@@ -1,0 +1,7 @@
+{
+  "name": "@gary-ai-platform-monitor/menubar",
+  "version": "0.1.0",
+  "private": true,
+  "description": "macOS menu bar shell (Phase 3). Placeholder until Tauri/Swift scaffold.",
+  "license": "MIT"
+}

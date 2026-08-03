@@ -1,0 +1,9 @@
+{
+  "name": "@gary-ai-platform-monitor/adapter-template",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Copy this folder to add a new provider adapter. Not built by default.",
+  "main": "./src/index.ts"
+}

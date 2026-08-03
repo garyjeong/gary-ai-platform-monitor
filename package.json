@@ -1,0 +1,28 @@
+{
+  "name": "gary-ai-platform-monitor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "macOS menu bar app that discovers local AI platform logins, monitors usage quotas as percentages, and shows official status-page health.",
+  "license": "MIT",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "packages/adapters/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @gary-ai-platform-monitor/core && npm run build -w @gary-ai-platform-monitor/health && npm run build -w @gary-ai-platform-monitor/adapter-claude && npm run build -w @gary-ai-platform-monitor/adapter-codex && npm run build -w @gary-ai-platform-monitor/adapter-grok",
+    "typecheck": "npm run build",
+    "scan": "node --import tsx scripts/scan.ts",
+    "health": "node --import tsx scripts/health.ts",
+    "test": "npm run test -w @gary-ai-platform-monitor/health --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3"
+  }
+}

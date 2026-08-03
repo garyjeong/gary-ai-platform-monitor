@@ -1,0 +1,14 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.DS_Store
+.env
+.env.*
+!.env.example
+coverage/
+.turbo/
+*.log
+apps/menubar/src-tauri/target/
+.idea/
+.vscode/*
+!.vscode/extensions.json
