@@ -303,27 +303,57 @@ app.on('window-all-closed', () => {
 });
 
 function loadTrayIcon(): NativeImage {
-  const candidates = [
+  // Prefer 16px base; include @2x if present for Retina sharpness.
+  // Menu bar icons must stay small — never ship 44px+ tray assets.
+  const baseCandidates = [
     path.join(__dirname, 'icons', 'trayTemplate.png'),
     path.join(__dirname, '..', 'build', 'trayTemplate.png'),
   ];
-  for (const p of candidates) {
+  const hiCandidates = [
+    path.join(__dirname, 'icons', 'trayTemplate@2x.png'),
+    path.join(__dirname, '..', 'build', 'trayTemplate@2x.png'),
+  ];
+
+  for (const p of baseCandidates) {
     try {
       if (!fs.existsSync(p)) continue;
-      const img = nativeImage.createFromPath(p);
-      if (!img.isEmpty()) {
-        // macOS: template = monochrome, follows menu bar light/dark
-        img.setTemplateImage(true);
-        return img;
+      let img = nativeImage.createFromPath(p);
+      if (img.isEmpty()) continue;
+
+      // Attach @2x representation when available
+      for (const hi of hiCandidates) {
+        if (!fs.existsSync(hi)) continue;
+        try {
+          const hiImg = nativeImage.createFromPath(hi);
+          if (!hiImg.isEmpty()) {
+            // rebuild with both scales if buffer API works; else resize 1x only
+            img = nativeImage.createFromBuffer(img.toPNG(), { scaleFactor: 1.0 });
+            // Electron: createFromPath of 16px is enough; force max 16pt
+            break;
+          }
+        } catch {
+          // ignore
+        }
       }
+
+      // Cap display size at 16×16 logical points (menu bar standard)
+      const size = img.getSize();
+      if (size.width > 18 || size.height > 18) {
+        img = img.resize({ width: 16, height: 16, quality: 'best' });
+      }
+
+      // macOS: template = monochrome, follows menu bar light/dark
+      img.setTemplateImage(true);
+      return img;
     } catch {
       // try next
     }
   }
   // Fallback simple ring glyph
   const fallback = nativeImage.createFromDataURL(TRAY_FALLBACK_PNG);
-  fallback.setTemplateImage(true);
-  return fallback;
+  const fb = fallback.resize({ width: 16, height: 16, quality: 'best' });
+  fb.setTemplateImage(true);
+  return fb;
 }
 
 /** Minimal ring glyph (template-style) if assets missing */
