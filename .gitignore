@@ -16,3 +16,4 @@ apps/menubar/dist/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+apps/menubar/build/icon.iconset/

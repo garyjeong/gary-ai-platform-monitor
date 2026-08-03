@@ -29,6 +29,7 @@
     "electronVersion": "37.10.3",
     "mac": {
       "category": "public.app-category.developer-tools",
+      "icon": "build/icon.icns",
       "target": [
         {
           "target": "dmg",
@@ -42,10 +43,13 @@
     },
     "files": [
       "dist/**/*",
-      "package.json"
+      "package.json",
+      "build/icon.icns",
+      "build/trayTemplate.png"
     ],
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "build"
     },
     "extraMetadata": {
       "main": "dist/main.js"

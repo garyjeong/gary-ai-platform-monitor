@@ -12,8 +12,10 @@ import {
   screen,
   Tray,
 } from 'electron';
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { NativeImage } from 'electron';
 import {
   loadConfig,
   takeSnapshot,
@@ -276,8 +278,7 @@ app.whenReady().then(async () => {
   const cfg = loadConfig();
   applyOpenAtLogin(cfg.openAtLogin);
 
-  const icon = nativeImage.createFromDataURL(DOT_PNG);
-  tray = new Tray(icon);
+  tray = new Tray(loadTrayIcon());
   tray.setIgnoreDoubleClickEvents(true);
   tray.setTitle(''); // never show aggregate %
   tray.on('click', () => toggleStatusWindow());
@@ -301,6 +302,30 @@ app.on('window-all-closed', () => {
   /* tray app */
 });
 
-/** Simple status-dot icon (14x14) */
-const DOT_PNG =
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAOCAYAAAAfSC3RAAAAHElEQVQoz2NgGAWjYBSMglEwCkbBKBgFo4AaAACX8gEBqJ3xUwAAAABJRU5ErkJggg==';
+function loadTrayIcon(): NativeImage {
+  const candidates = [
+    path.join(__dirname, 'icons', 'trayTemplate.png'),
+    path.join(__dirname, '..', 'build', 'trayTemplate.png'),
+  ];
+  for (const p of candidates) {
+    try {
+      if (!fs.existsSync(p)) continue;
+      const img = nativeImage.createFromPath(p);
+      if (!img.isEmpty()) {
+        // macOS: template = monochrome, follows menu bar light/dark
+        img.setTemplateImage(true);
+        return img;
+      }
+    } catch {
+      // try next
+    }
+  }
+  // Fallback simple ring glyph
+  const fallback = nativeImage.createFromDataURL(TRAY_FALLBACK_PNG);
+  fallback.setTemplateImage(true);
+  return fallback;
+}
+
+/** Minimal ring glyph (template-style) if assets missing */
+const TRAY_FALLBACK_PNG =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAzUlEQVRYR+2WQQ6AIAwF6f0v3b0YN8bQQss2GmLiwjS0/2cKAuA/VwAvwAvgv8A9sHbP7Q0wA9YAGxADsQEbEAOxARsQA7EBGxADsQEbEAOxARsQA7EBGxADsQEbEAOxARsQA7EBGxADsQEbkP0C9sDWPXc3wA5YAxtgB2LABmwgBmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmLABmzABmL4AHxJ/QHkX3sMAAAAAElFTkSuQmCC';
