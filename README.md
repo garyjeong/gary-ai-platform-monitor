@@ -1,103 +1,107 @@
 # gary-ai-platform-monitor
 
-macOS menu bar monitor for AI platform **usage quotas** and **official status health**.
+macOS **menu bar** monitor for AI platform **usage quotas** and **official status health**.
 
-> Phase 0 scaffold — discovery + health CLI work; usage collectors and the menu bar shell come next.
+Automatically discovers local logins (Claude Code, Codex, Grok), shows usage as **percent** when the platform exposes it, and polls public status pages like [status.claude.com](https://status.claude.com). **No outage notifications** — UI only.
 
-## What it does
+## Features
 
 | Feature | Description |
 |---------|-------------|
-| **Auto-discover** | Detects local logins (Claude Code, Codex, Grok, …) without manual setup |
-| **Monitor toggles** | Settings enable/disable per platform (planned UI) |
-| **Usage %** | Prefer percent remaining/used when the provider exposes it |
-| **Health** | Polls public pages like [status.claude.com](https://status.claude.com) (default every **30s**, min 10s) |
-| **No alerts** | Health is UI-only — no push/OS notifications for outages |
-
-All credential and usage data stays **local**. Health uses public status APIs only.
-
-## Status
-
-| Area | State |
-|------|--------|
-| Monorepo + contracts | ✅ |
-| Seed adapters detect (Claude / Codex / Grok) | ✅ |
-| Statuspage health client | ✅ |
-| Usage collectors | ✅ Claude % · Codex % · Grok tokens (no %) |
-| Menu bar app | ⏳ Phase 3 |
-
-See [docs/plan.md](./docs/plan.md) for the full plan.
+| **Auto-discover** | Detects Claude / Codex / Grok credentials & sessions on this Mac |
+| **Monitor toggles** | Enable/disable each platform in the popover Settings |
+| **Usage %** | Claude 5h/7d · Codex primary window · Grok tokens/cost (no %) |
+| **Health** | Public Statuspage (default every **30s**, min 10s) — badge only |
+| **Local only** | Tokens and usage stay on your machine |
 
 ## Requirements
 
+- macOS
 - Node.js 20+
-- macOS (Keychain detect for Claude; primary target for the app)
+- Logged-in CLI tools where you want usage (Claude Code, Codex, Grok)
 
-## Quick start (dev)
+## Install & run
 
 ```bash
 git clone https://github.com/garyjeong/gary-ai-platform-monitor.git
 cd gary-ai-platform-monitor
 npm install
 npm run build
-npm run scan      # which providers look logged-in locally
-npm run health    # live status.claude.com / status.openai.com / …
-npm run usage     # quota windows (Claude/Codex %; Grok tokens)
+npm run app
+```
+
+The Dock icon is hidden; look for **AI NN%** in the menu bar. Click to open the panel.
+
+### CLI
+
+```bash
+node apps/cli/dist/cli.js snapshot
+node apps/cli/dist/cli.js scan
+node apps/cli/dist/cli.js usage
+node apps/cli/dist/cli.js health
+node apps/cli/dist/cli.js config set-monitor grok off
+```
+
+### Dev helpers
+
+```bash
+npm run scan
+npm run usage
+npm run health
 npm test
 ```
 
-### Usage notes
+## Usage sources
 
 | Provider | Source | Output |
 |----------|--------|--------|
 | Claude | Claude Code OAuth → Anthropic usage API | 5h / 7d **%** |
-| Codex | `~/.codex/sessions/**/rollout-*.jsonl` `rate_limits` | primary **%** |
-| Grok | `~/.grok/sessions` aggregation | tokens + USD only (`usedPercent: null`) |
+| Codex | `~/.codex/sessions/**/rollout-*.jsonl` | primary **%** |
+| Grok | `~/.grok/sessions` | tokens + USD (`usedPercent: null`) |
 
-Grok weekly window alignment (optional):
+Optional Grok week alignment:
 
 ```bash
 export GAI_PM_GROK_WEEK_ANCHOR='2026-08-04T14:19:00'
-npm run usage
-```
-
-
-Example `scan` output shape:
-
-```json
-{
-  "providers": [
-    {
-      "id": "claude",
-      "found": true,
-      "confidence": "high",
-      "signals": [{ "kind": "keychain", "detail": "Claude Code-credentials" }]
-    }
-  ]
-}
-```
-
-## Repository layout
-
-```
-apps/menubar/                 # Phase 3 shell (placeholder)
-packages/core/                # registry, discovery, config, types
-packages/health/              # Statuspage v2 client
-packages/adapters/claude|codex|grok/
-docs/plan.md
 ```
 
 ## Config
 
-`~/.config/gary-ai-platform-monitor/config.json` (created when the app saves settings)
+`~/.config/gary-ai-platform-monitor/config.json`
 
-- `health.intervalSeconds`: default `30`, clamped to `10`–`60`
-- `providers.<id>.monitor`: whether to fetch usage / show in the bar
-- `providers.<id>.showHealth`: health badge on that provider
+- `health.intervalSeconds` — 10–60 (default 30)
+- `providers.<id>.monitor` — fetch usage / show in bar summary
+- `providers.<id>.showHealth` — poll status page for that provider
+- `defaults.autoEnableOnFirstConnect` — seed `monitor: true` on first detect
+
+## Packaging (optional)
+
+```bash
+npm run build
+npm run dist -w @gary-ai-platform-monitor/menubar
+```
+
+Produces artifacts under `apps/menubar/release/` (ad-hoc / unsigned unless you set signing).
+
+## Layout
+
+```
+apps/menubar/     Electron tray app
+apps/cli/         gai-pm CLI
+packages/runtime/ Wired snapshot API
+packages/core/    Registry, config, snapshot
+packages/health/  Statuspage client
+packages/adapters/{claude,codex,grok}/
+docs/plan.md
+```
+
+## Privacy
+
+See [docs/privacy.md](./docs/privacy.md). No telemetry backend. Health requests are unauthenticated GETs to vendor status APIs.
 
 ## Related
 
-- [gary-claude-code-hud](https://github.com/garyjeong/gary-claude-code-hud) — Claude Code statusline; usage readers will be ported into adapters here
+- [gary-claude-code-hud](https://github.com/garyjeong/gary-claude-code-hud) — Claude Code statusline (usage readers shared in spirit)
 
 ## License
 

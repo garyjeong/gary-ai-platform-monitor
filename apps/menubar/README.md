@@ -1,12 +1,33 @@
-# Menu bar app (Phase 3)
+# Menu bar app
 
-Placeholder for the installable macOS shell.
+Electron tray app (Dock hidden on macOS).
 
-## Planned stack options
+## Run
 
-1. **Tauri 2 + React/Svelte** — reuse TypeScript adapters from `packages/*`
-2. **SwiftUI `MenuBarExtra`** — native; call core via CLI or embed logic in Swift later
+From repo root:
 
-v1 goal: Dock-less menu bar icon, popover with monitored providers (usage % + health badge), Settings for monitor toggles.
+```bash
+npm install
+npm run app
+```
 
-No push notifications for outages (product decision).
+Or from this package after a full monorepo build:
+
+```bash
+npm run start
+```
+
+## Features
+
+- Menu bar title: highest monitored usage % (`AI 93%`)
+- Popover: provider cards with % bars, health badge, monitor/health toggles
+- Health interval 10–60s (default 30s)
+- **No** outage notifications
+
+## Package
+
+```bash
+npm run dist
+```
+
+Output under `release/` (unsigned unless you configure signing).

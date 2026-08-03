@@ -1,7 +1,47 @@
 {
   "name": "@gary-ai-platform-monitor/menubar",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "macOS menu bar shell (Phase 3). Placeholder until Tauri/Swift scaffold.",
-  "license": "MIT"
+  "description": "macOS menu bar app for AI platform usage + health",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node ./scripts/copy-static.mjs",
+    "start": "npm run build && electron .",
+    "dev": "npm run build && electron .",
+    "pack": "npm run build && electron-builder --mac dir",
+    "dist": "npm run build && electron-builder --mac dmg"
+  },
+  "dependencies": {
+    "@gary-ai-platform-monitor/runtime": "0.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "electron": "^37.10.3",
+    "electron-builder": "^26.0.12",
+    "typescript": "^5.8.3"
+  },
+  "build": {
+    "appId": "com.garyjeong.ai-platform-monitor",
+    "productName": "AI Platform Monitor",
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        "dmg",
+        "dir"
+      ],
+      "identity": null
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "extraMetadata": {
+      "main": "dist/main.js"
+    }
+  }
 }

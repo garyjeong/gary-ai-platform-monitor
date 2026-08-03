@@ -1,6 +1,6 @@
 {
   "name": "gary-ai-platform-monitor",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "macOS menu bar app that discovers local AI platform logins, monitors usage quotas as percentages, and shows official status-page health.",
   "license": "MIT",
@@ -11,12 +11,15 @@
     "apps/*"
   ],
   "scripts": {
-    "build": "npm run build -w @gary-ai-platform-monitor/core && npm run build -w @gary-ai-platform-monitor/health && npm run build -w @gary-ai-platform-monitor/adapter-claude && npm run build -w @gary-ai-platform-monitor/adapter-codex && npm run build -w @gary-ai-platform-monitor/adapter-grok",
+    "build": "npm run build -w @gary-ai-platform-monitor/core && npm run build -w @gary-ai-platform-monitor/health && npm run build -w @gary-ai-platform-monitor/adapter-claude && npm run build -w @gary-ai-platform-monitor/adapter-codex && npm run build -w @gary-ai-platform-monitor/adapter-grok && npm run build -w @gary-ai-platform-monitor/runtime && npm run build -w @gary-ai-platform-monitor/cli && npm run build -w @gary-ai-platform-monitor/menubar",
     "typecheck": "npm run build",
     "scan": "node --import tsx scripts/scan.ts",
     "health": "node --import tsx scripts/health.ts",
     "usage": "node --import tsx scripts/usage.ts",
-    "test": "npm run test -w @gary-ai-platform-monitor/health --if-present && npm run test -w @gary-ai-platform-monitor/adapter-claude --if-present && npm run test -w @gary-ai-platform-monitor/adapter-codex --if-present"
+    "snapshot": "npm run build -w @gary-ai-platform-monitor/runtime && npm run build -w @gary-ai-platform-monitor/cli && node apps/cli/dist/cli.js snapshot",
+    "app": "npm run build && node scripts/ensure-electron.mjs && npm run start -w @gary-ai-platform-monitor/menubar",
+    "postinstall": "node scripts/ensure-electron.mjs",
+    "test": "npm run test -w @gary-ai-platform-monitor/core --if-present && npm run test -w @gary-ai-platform-monitor/health --if-present && npm run test -w @gary-ai-platform-monitor/adapter-claude --if-present && npm run test -w @gary-ai-platform-monitor/adapter-codex --if-present"
   },
   "engines": {
     "node": ">=20"
@@ -25,5 +28,8 @@
     "@types/node": "^22.20.1",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3"
+  },
+  "allowScripts": {
+    "electron@37.10.3": true
   }
 }

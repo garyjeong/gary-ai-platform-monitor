@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Platform Monitor</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="top">
+      <div>
+        <h1>AI Platform Monitor</h1>
+        <p class="sub" id="updated">—</p>
+      </div>
+      <div class="actions">
+        <button type="button" id="btn-refresh" title="Refresh">↻</button>
+        <button type="button" id="btn-quit" title="Quit" class="ghost">✕</button>
+      </div>
+    </header>
+
+    <section class="summary" id="summary">
+      <div class="summary-title" id="tray-title">AI</div>
+      <div class="summary-meta" id="summary-meta">Loading…</div>
+    </section>
+
+    <section class="list" id="providers"></section>
+
+    <section class="settings">
+      <h2>Settings</h2>
+      <label class="row">
+        <span>Health interval</span>
+        <select id="health-interval">
+          <option value="10">10s</option>
+          <option value="15">15s</option>
+          <option value="30" selected>30s</option>
+          <option value="60">60s</option>
+        </select>
+      </label>
+      <p class="hint">
+        Usage % when available. Grok shows tokens/cost only. Health from public status pages — no alerts.
+      </p>
+    </section>
+
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>

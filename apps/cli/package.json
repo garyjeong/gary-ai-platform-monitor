@@ -1,0 +1,20 @@
+{
+  "name": "@gary-ai-platform-monitor/cli",
+  "version": "0.2.0",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "gai-pm": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/cli.js"
+  },
+  "dependencies": {
+    "@gary-ai-platform-monitor/health": "0.1.0",
+    "@gary-ai-platform-monitor/runtime": "0.2.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}

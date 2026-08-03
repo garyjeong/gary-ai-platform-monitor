@@ -8,7 +8,9 @@ dist/
 coverage/
 .turbo/
 *.log
-apps/menubar/src-tauri/target/
+apps/menubar/release/
+apps/menubar/dist/
+
 .idea/
 .vscode/*
 !.vscode/extensions.json

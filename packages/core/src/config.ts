@@ -43,6 +43,41 @@ export function getProviderPref(
   );
 }
 
+export function setProviderMonitor(
+  config: AppConfig,
+  providerId: string,
+  monitor: boolean
+): AppConfig {
+  const prev = getProviderPref(config, providerId);
+  return {
+    ...config,
+    providers: {
+      ...config.providers,
+      [providerId]: {
+        ...prev,
+        monitor,
+        // Turning off is an explicit user choice — do not auto-enable again
+        userHidden: monitor ? prev.userHidden : false,
+      },
+    },
+  };
+}
+
+export function setProviderShowHealth(
+  config: AppConfig,
+  providerId: string,
+  showHealth: boolean
+): AppConfig {
+  const prev = getProviderPref(config, providerId);
+  return {
+    ...config,
+    providers: {
+      ...config.providers,
+      [providerId]: { ...prev, showHealth },
+    },
+  };
+}
+
 function normalizeHealthInterval(config: AppConfig): AppConfig {
   const sec = config.health.intervalSeconds;
   const clamped = Math.min(60, Math.max(10, Number.isFinite(sec) ? sec : 30));
