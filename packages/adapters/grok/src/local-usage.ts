@@ -345,6 +345,7 @@ export function fetchGrokUsage(): UsageResult {
       windows: [],
       status: 'auth_required',
       updatedAt: Date.now(),
+      errorKind: 'auth',
       errorMessage: 'No ~/.grok/sessions directory',
     };
   }
@@ -357,20 +358,33 @@ export function fetchGrokUsage(): UsageResult {
       windows: [],
       status: 'unsupported',
       updatedAt: Date.now(),
+      errorKind: 'unsupported',
       errorMessage: 'No usage entries in current window',
     };
   }
 
+  return toGrokUsageResult(u);
+}
+
+/**
+ * Pure mapper: local token/cost totals → windows.
+ * - Anchored (GAI_PM_GROK_WEEK_ANCHOR set): fixed weekly window with resetsAt.
+ * - No anchor: trailing 7 days — rolling, so NO resetsAt (it never "resets").
+ */
+export function toGrokUsageResult(u: GrokUsage, now = Date.now()): UsageResult {
+  const timing = u.aligned
+    ? { resetsAt: u.resetsAt, windowKind: 'fixed' as const }
+    : { windowKind: 'rolling' as const };
+  const more = u.truncated ? '+' : '';
   return {
     providerId: 'grok',
     windows: [
       {
         id: u.aligned ? 'weekly' : '7d',
         usedPercent: null,
-        resetsAt: u.resetsAt,
-        label: u.aligned
-          ? `Grok tokens (week)${u.truncated ? '+' : ''}`
-          : `Grok tokens (7d)${u.truncated ? '+' : ''}`,
+        ...timing,
+        windowSeconds: WEEK_MS / 1000,
+        label: u.aligned ? `Grok tokens (week)${more}` : `Grok tokens (7d)${more}`,
         source: 'local',
         usedAbsolute: u.totalTokens,
         unit: 'tokens',
@@ -378,7 +392,8 @@ export function fetchGrokUsage(): UsageResult {
       {
         id: u.aligned ? 'weekly_usd' : '7d_usd',
         usedPercent: null,
-        resetsAt: u.resetsAt,
+        ...timing,
+        windowSeconds: WEEK_MS / 1000,
         label: u.aligned ? 'Grok cost (week)' : 'Grok cost (7d)',
         source: 'local',
         usedAbsolute: u.costUsd,
@@ -386,8 +401,6 @@ export function fetchGrokUsage(): UsageResult {
       },
     ],
     status: 'ok',
-    updatedAt: Date.now(),
-    errorMessage:
-      'Quota percent unavailable for Grok CLI (tokens/cost only). Set GAI_PM_GROK_WEEK_ANCHOR to align weekly window.',
+    updatedAt: now,
   };
 }

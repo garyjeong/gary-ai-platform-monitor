@@ -10,10 +10,16 @@ function escapeHtml(s) {
     .replaceAll('"', '&quot;');
 }
 
+const LIFECYCLE_TEXT = {
+  auth_error: '다시 로그인 필요',
+  unsupported: '사용량 정보 없음',
+  connected: '최근 조회 실패',
+};
+
 function render(snap) {
   if (!snap) return;
 
-  const interval = String(snap.config.health.intervalSeconds || 30);
+  const interval = String(snap.config.health.intervalSeconds || 60);
   const sel = $('#health-interval');
   if (sel && sel.value !== interval) sel.value = interval;
 
@@ -47,10 +53,10 @@ function render(snap) {
     const row = document.createElement('div');
     row.className = 'provider-row' + (found ? '' : ' dim');
     const statusBits = [
-      found ? 'detected' : 'not on this Mac',
-      on ? 'visible (usage + health)' : 'hidden',
-      p.lifecycle,
-    ];
+      found ? '감지됨' : '이 Mac에 없음',
+      on ? '표시 중' : '숨김',
+      LIFECYCLE_TEXT[p.lifecycle] ?? '',
+    ].filter(Boolean);
     row.innerHTML = `
       <div class="provider-row-main">
         <div class="provider-name">${escapeHtml(p.meta.displayName)}</div>
@@ -127,8 +133,7 @@ async function boot() {
 }
 
 boot().catch((err) => {
-  document.body.insertAdjacentHTML(
-    'beforeend',
-    `<p class="hint">${String(err)}</p>`
-  );
+  const el = $('#settings-error');
+  el.textContent = String(err);
+  el.hidden = false;
 });

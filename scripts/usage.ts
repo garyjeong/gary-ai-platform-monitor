@@ -11,8 +11,13 @@ registerSeedAdapters();
 const adapters = listAdapters();
 const results = await Promise.all(
   adapters.map(async (a) => {
-    const detect = await a.detect();
-    const usage = await a.fetchUsage();
+    const detect = await a.detect().catch(() => ({ found: false }));
+    if (!detect.found) return { id: a.meta.id, displayName: a.meta.displayName, found: false };
+    const usage = await a.fetchUsage().catch((err: unknown) => ({
+      status: 'error' as const,
+      windows: [],
+      errorMessage: err instanceof Error ? err.message : String(err),
+    }));
     return {
       id: a.meta.id,
       displayName: a.meta.displayName,

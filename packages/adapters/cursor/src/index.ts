@@ -1,18 +1,23 @@
 /**
  * Cursor adapter — detect install + optional browser session usage.
  * Usage requires cookies for cursor.com (auto or CURSOR_COOKIE / cursor.cookie file).
+ *
+ * Only the session cookie (WorkosCursorSessionToken) is read from the browser, and the
+ * Cookie header is only ever sent to cursor.com endpoints.
  */
 
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import type {
-  AuthContext,
-  DetectResult,
-  DetectSignal,
-  ProviderAdapter,
-  UsageResult,
-  UsageWindow,
+import {
+  fetchJson,
+  scrubSecrets,
+  type AuthContext,
+  type DetectResult,
+  type DetectSignal,
+  type ProviderAdapter,
+  type UsageResult,
+  type UsageWindow,
 } from '@gary-ai-platform-monitor/core';
 import {
   readChromiumCookieHeader,
@@ -20,6 +25,25 @@ import {
 } from '@gary-ai-platform-monitor/browser-cookies';
 
 const HOME = os.homedir();
+const SESSION_COOKIE_NAMES = ['WorkosCursorSessionToken'];
+const TIMEOUT_MS = 10_000;
+/** cursor.com only — the Cookie header must never go to another host. */
+export const CURSOR_USAGE_URLS = [
+  'https://www.cursor.com/api/usage',
+  'https://cursor.com/api/usage',
+  'https://www.cursor.com/api/auth/stripe',
+];
+const RELOGIN =
+  'Cursor session rejected — log in to cursor.com again in Chrome (or refresh CURSOR_COOKIE / cursor.cookie)';
+
+export function isCursorComUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'https:' && (u.hostname === 'cursor.com' || u.hostname.endsWith('.cursor.com'));
+  } catch {
+    return false;
+  }
+}
 
 function deepFindPercent(obj: unknown): UsageWindow[] {
   const out: UsageWindow[] = [];
@@ -59,7 +83,7 @@ function deepFindPercent(obj: unknown): UsageWindow[] {
   return out;
 }
 
-function resolveCookie(includeBrowser: boolean): string | null {
+async function resolveCookie(includeBrowser: boolean): Promise<string | null> {
   const manual = readManualCookieHeader(['GAI_PM_CURSOR_COOKIE', 'CURSOR_COOKIE']);
   if (manual) return manual;
   const file = path.join(HOME, '.config', 'gary-ai-platform-monitor', 'cursor.cookie');
@@ -72,10 +96,69 @@ function resolveCookie(includeBrowser: boolean): string | null {
     // ignore
   }
   if (!includeBrowser) return null;
-  const auto = readChromiumCookieHeader({
-    hostLike: ['%.cursor.com', 'cursor.com', '%.cursor.sh'],
+  const auto = await readChromiumCookieHeader({
+    hostLike: ['%.cursor.com', 'cursor.com'],
+    names: SESSION_COOKIE_NAMES,
   });
   return auto?.header ?? null;
+}
+
+/**
+ * Try the cursor.com endpoints in order. 404 / no percent fields → next endpoint;
+ * 401/403 → auth_required; 429 / network / timeout / 5xx → error (no further calls).
+ */
+export async function fetchCursorUsageWithCookie(
+  cookie: string,
+  fetchImpl?: typeof fetch
+): Promise<UsageResult> {
+  for (const url of CURSOR_USAGE_URLS) {
+    if (!isCursorComUrl(url)) continue; // defensive: cookies only go to cursor.com
+    const res = await fetchJson<unknown>(url, {
+      headers: {
+        Cookie: cookie,
+        Accept: 'application/json',
+        'User-Agent': 'gary-ai-platform-monitor/0.2.1',
+      },
+      timeoutMs: TIMEOUT_MS,
+      fetchImpl,
+    });
+    if (!res.ok) {
+      if (res.errorKind === 'auth') {
+        return {
+          providerId: 'cursor',
+          windows: [],
+          status: 'auth_required',
+          updatedAt: Date.now(),
+          errorKind: 'auth',
+          errorMessage: RELOGIN,
+        };
+      }
+      if (res.status === 404 || res.errorKind === 'parse' || res.errorKind === 'unknown') continue;
+      return {
+        providerId: 'cursor',
+        windows: [],
+        status: 'error',
+        updatedAt: Date.now(),
+        errorKind: res.errorKind,
+        retryAfterMs: res.retryAfterMs,
+        errorMessage: scrubSecrets(`Cursor: ${res.errorMessage}`),
+      };
+    }
+    const windows = deepFindPercent(res.data).slice(0, 4);
+    if (windows.length) {
+      const now = Date.now();
+      return { providerId: 'cursor', windows, status: 'ok', updatedAt: now, observedAt: now };
+    }
+  }
+
+  return {
+    providerId: 'cursor',
+    windows: [],
+    status: 'unsupported',
+    updatedAt: Date.now(),
+    errorKind: 'unsupported',
+    errorMessage: 'Cursor session found but usage endpoints returned no percent fields',
+  };
 }
 
 export const cursorAdapter: ProviderAdapter = {
@@ -116,57 +199,19 @@ export const cursorAdapter: ProviderAdapter = {
     };
   },
   async fetchUsage(ctx?: AuthContext): Promise<UsageResult> {
-    const cookie = resolveCookie(Boolean(ctx?.includeBrowserCookies));
+    const cookie = await resolveCookie(Boolean(ctx?.includeBrowserCookies));
     if (!cookie) {
       return {
         providerId: 'cursor',
         windows: [],
         status: 'auth_required',
         updatedAt: Date.now(),
+        errorKind: 'auth',
         errorMessage:
           'Cursor usage needs browser cookies. Set CURSOR_COOKIE or enable includeBrowserCookies + login on cursor.com',
       };
     }
-
-    const urls = [
-      'https://www.cursor.com/api/usage',
-      'https://cursor.com/api/usage',
-      'https://www.cursor.com/api/auth/stripe',
-      'https://api2.cursor.sh/auth/full_stripe_profile',
-    ];
-
-    for (const url of urls) {
-      try {
-        const res = await fetch(url, {
-          headers: {
-            Cookie: cookie,
-            Accept: 'application/json',
-            'User-Agent': 'gary-ai-platform-monitor/0.2.1',
-          },
-        });
-        if (!res.ok) continue;
-        const json: unknown = await res.json();
-        const windows = deepFindPercent(json).slice(0, 4);
-        if (windows.length) {
-          return {
-            providerId: 'cursor',
-            windows,
-            status: 'ok',
-            updatedAt: Date.now(),
-          };
-        }
-      } catch {
-        // next
-      }
-    }
-
-    return {
-      providerId: 'cursor',
-      windows: [],
-      status: 'unsupported',
-      updatedAt: Date.now(),
-      errorMessage: 'Cursor session found but usage endpoints returned no percent fields',
-    };
+    return fetchCursorUsageWithCookie(cookie);
   },
 };
 

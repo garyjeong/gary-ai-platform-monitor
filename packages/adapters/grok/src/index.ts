@@ -19,7 +19,8 @@ import type {
 } from '@gary-ai-platform-monitor/core';
 import { fetchGrokUsage } from './local-usage.js';
 import { fetchGrokBrowserUsage } from './browser-usage.js';
-import { fetchGrokSubscription } from './subscription.js';
+import { fetchGrokSubscription, grokTierLabel } from './subscription.js';
+import { combineGrokResults } from './combine.js';
 
 const HOME = os.homedir();
 const GROK_HOME = path.join(HOME, '.grok');
@@ -82,44 +83,22 @@ export const grokAdapter: ProviderAdapter = {
   async fetchUsage(ctx?: AuthContext): Promise<UsageResult> {
     const includeBrowser = Boolean(ctx?.includeBrowserCookies);
 
-    // 1) Browser / manual cookie path for %
-    const browser = await fetchGrokBrowserUsage(includeBrowser);
-    if (browser && browser.status === 'ok' && browser.windows.some((w) => w.usedPercent != null)) {
-      // Enrich with subscription tier when available (non-blocking metadata)
-      const sub = await fetchGrokSubscription().catch(() => null);
-      if (sub?.tier) {
-        browser.errorMessage = [
-          browser.errorMessage,
-          `tier=${sub.tier}`,
-          sub.billingPeriodEnd ? `periodEnd=${sub.billingPeriodEnd}` : '',
-        ]
-          .filter(Boolean)
-          .join(' · ');
-      }
-      return browser;
-    }
-
-    // 2) Local tokens + subscription tier note (no %)
-    const local = fetchGrokUsage();
-    const sub = await fetchGrokSubscription();
-    if (sub?.tier) {
-      local.errorMessage = [
-        local.errorMessage,
-        `tier=${sub.tier}`,
-        sub.billingPeriodEnd ? `periodEnd=${sub.billingPeriodEnd}` : '',
-        browser?.errorMessage,
-      ]
-        .filter(Boolean)
-        .join(' · ');
-    } else if (browser?.errorMessage) {
-      local.errorMessage = [local.errorMessage, browser.errorMessage]
-        .filter(Boolean)
-        .join(' · ');
-    }
-    return local;
+    // Browser/manual cookie path (quota %) and the tier lookup (metadata → note) in parallel.
+    const [browser, sub] = await Promise.all([
+      fetchGrokBrowserUsage(includeBrowser),
+      fetchGrokSubscription().catch(() => null),
+    ]);
+    // Local tokens/cost (no %) only when the browser path did not produce %.
+    return combineGrokResults(browser, fetchGrokUsage, grokTierLabel(sub?.tier));
   },
 };
 
-export { fetchGrokUsage, readGrokUsage, weeklyWindow } from './local-usage.js';
-export { fetchGrokBrowserUsage, extractPercentWindows } from './browser-usage.js';
+export { fetchGrokUsage, readGrokUsage, weeklyWindow, toGrokUsageResult } from './local-usage.js';
+export {
+  fetchGrokBrowserUsage,
+  fetchGrokBrowserUsageWithCookie,
+  extractPercentWindows,
+} from './browser-usage.js';
+export { grokTierLabel } from './subscription.js';
+export { combineGrokResults } from './combine.js';
 export default grokAdapter;

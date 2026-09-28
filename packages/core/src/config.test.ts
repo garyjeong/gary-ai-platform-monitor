@@ -36,7 +36,8 @@ describe('mergeConfig', () => {
     });
     assert.equal(merged.providers.claude?.monitor, true);
     assert.equal(merged.providers.claude?.showHealth, true);
-    assert.equal(merged.providers.claude?.userHidden, true);
+    // Explicit monitor:true clears the stale userHidden flag.
+    assert.equal(merged.providers.claude?.userHidden, false);
   });
 });
 
@@ -74,7 +75,7 @@ describe('mergeConfig health/scan clamps', () => {
       health: { enabled: true, intervalSeconds: 999, showInMenuBar: false },
       scan: { intervalMinutes: 5, includeBrowserCookies: true },
     });
-    assert.equal(merged.health.intervalSeconds, 60);
+    assert.equal(merged.health.intervalSeconds, 300);
     assert.equal(merged.health.showInMenuBar, false);
     assert.equal(merged.scan.includeBrowserCookies, true);
     assert.equal(merged.scan.intervalMinutes, 5);
@@ -84,7 +85,7 @@ describe('mergeConfig health/scan clamps', () => {
     const merged = mergeConfig(DEFAULT_CONFIG, {
       health: { enabled: true, intervalSeconds: Number.NaN, showInMenuBar: true },
     });
-    assert.equal(merged.health.intervalSeconds, 30);
+    assert.equal(merged.health.intervalSeconds, 60);
   });
 });
 

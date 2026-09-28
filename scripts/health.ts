@@ -3,7 +3,7 @@
  * Phase 0: public status-page health CLI
  *   npm run health
  *
- * Default interval target for the app: 30s (min 10s). No notifications.
+ * App default interval: 60s (range 30–300s). No notifications.
  */
 import { pollHealth } from '../packages/health/src/index.ts';
 import { listAdapters } from '../packages/core/src/index.ts';

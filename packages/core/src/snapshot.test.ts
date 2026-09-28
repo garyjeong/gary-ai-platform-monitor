@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { DEFAULT_CONFIG, type ProviderAdapter } from './types.js';
-import { buildSnapshot, summarizeMenuBar } from './snapshot.js';
+import { summarizeMenuBar } from './snapshot.js';
+import { buildSnapshot } from './collector.js';
 
 function mockAdapter(
   id: string,
@@ -158,10 +159,10 @@ describe('buildSnapshot', () => {
     assert.equal(healthCalls, 0);
   });
 
-  it('forces monitor off when userHidden is set', async () => {
+  it('explicit monitor:true wins over a leftover userHidden flag', async () => {
     const config = structuredClone(DEFAULT_CONFIG);
     config.providers.claude = {
-      monitor: true, // inconsistent — should be corrected
+      monitor: true, // hand-edited: user turned it on without clearing userHidden
       showHealth: true,
       userHidden: true,
     };
@@ -169,16 +170,11 @@ describe('buildSnapshot', () => {
     const adapter = mockAdapter('claude');
     adapter.fetchUsage = async () => {
       fetched = true;
-      return {
-        providerId: 'claude',
-        status: 'ok',
-        updatedAt: Date.now(),
-        windows: [],
-      };
+      return { providerId: 'claude', status: 'ok', updatedAt: Date.now(), windows: [] };
     };
     const snap = await buildSnapshot({ adapters: [adapter], config });
-    assert.equal(fetched, false);
-    assert.equal(snap.config.providers.claude?.monitor, false);
+    assert.equal(fetched, true);
+    assert.equal(snap.providers[0]?.lifecycle, 'monitored');
   });
 
   it('skips health when global health.enabled is false', async () => {

@@ -1,6 +1,6 @@
 {
   "name": "@gary-ai-platform-monitor/menubar",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "macOS menu bar app for AI platform usage + health",
   "author": "garyjeong",
@@ -8,44 +8,56 @@
   "type": "module",
   "main": "./dist/main.js",
   "scripts": {
-    "build": "tsc -p tsconfig.json && node ./scripts/copy-static.mjs",
+    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json && node ./scripts/copy-static.mjs",
     "start": "npm run build && electron .",
     "dev": "npm run build && electron .",
     "pack": "npm run build && electron-builder --mac dir",
     "dist": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg"
   },
   "dependencies": {
+    "@gary-ai-platform-monitor/core": "0.1.0",
     "@gary-ai-platform-monitor/runtime": "0.3.1"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",
-    "electron": "37.10.3",
-    "electron-builder": "26.0.12",
+    "electron": "44.4.5",
+    "electron-builder": "26.15.3",
     "typescript": "^5.8.3"
   },
   "build": {
     "appId": "com.garyjeong.ai-platform-monitor",
     "productName": "AI Platform Monitor",
-    "electronVersion": "37.10.3",
+    "electronVersion": "44.4.5",
     "mac": {
       "category": "public.app-category.developer-tools",
       "icon": "build/icon.icns",
       "target": [
         {
           "target": "dmg",
-          "arch": ["arm64"]
+          "arch": [
+            "arm64"
+          ]
         },
         "dir"
       ],
       "identity": null,
       "hardenedRuntime": true,
-      "gatekeeperAssess": false
+      "gatekeeperAssess": false,
+      "minimumSystemVersion": "13.0",
+      "extendInfo": {
+        "LSUIElement": true
+      }
     },
     "files": [
       "dist/**/*",
       "package.json",
       "build/icon.icns",
-      "build/trayTemplate.png"
+      "build/trayTemplate.png",
+      "!**/*.map",
+      "!**/*.d.ts",
+      "!**/*.d.cts",
+      "!**/node_modules/@gary-ai-platform-monitor/*/src/**",
+      "!**/node_modules/@gary-ai-platform-monitor/*/tsconfig.json"
     ],
     "directories": {
       "output": "release",

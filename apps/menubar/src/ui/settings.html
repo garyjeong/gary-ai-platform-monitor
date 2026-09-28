@@ -7,48 +7,49 @@
       content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Settings — AI Platform Monitor</title>
+    <title>설정 — AI Platform Monitor</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body class="settings-page">
     <header class="top framed">
       <div>
-        <h1>Settings</h1>
+        <h1>설정</h1>
         <p class="sub">대시보드에 표시할 플랫폼 · 앱 옵션</p>
       </div>
       <div class="actions">
-        <button type="button" class="icon-btn" id="btn-refresh" title="Refresh" aria-label="Refresh">↻</button>
+        <button type="button" class="icon-btn" id="btn-refresh" title="새로고침" aria-label="새로고침">↻</button>
       </div>
     </header>
 
     <section class="settings-block">
-      <h2>App</h2>
+      <h2>일반</h2>
       <label class="row">
-        <span>Refresh interval (usage + health)</span>
+        <span>공식 상태 페이지 확인 주기</span>
         <select id="health-interval">
-          <option value="10">10s</option>
-          <option value="15">15s</option>
-          <option value="30" selected>30s</option>
-          <option value="60">60s</option>
+          <option value="30">30초</option>
+          <option value="60" selected>1분</option>
+          <option value="120">2분</option>
+          <option value="300">5분</option>
         </select>
       </label>
       <label class="row toggle-row">
-        <span>Open at login</span>
+        <span>로그인 시 실행</span>
         <input type="checkbox" id="open-at-login" />
       </label>
       <label class="row toggle-row">
-        <span>Read browser cookies (Grok / Cursor)</span>
+        <span>브라우저 쿠키 읽기 (Grok · Cursor 사용량)</span>
         <input type="checkbox" id="browser-cookies" />
       </label>
       <p class="hint">
-        알림은 보내지 않습니다. 표시 ON 인 플랫폼만 사용량·status 를 함께 조회합니다.
+        사용량은 플랫폼별로 1–5분 간격으로 조회하고, 호출 제한을 받으면 서버가 요청한 만큼 기다립니다.
+        알림은 보내지 않습니다.
       </p>
     </section>
 
     <section class="settings-block">
-      <h2>Platforms</h2>
+      <h2>플랫폼</h2>
       <p class="hint tight">
-        <strong>표시 ON</strong> 인 플랫폼만 대시보드에 나옵니다 (사용량 + health 함께).<br />
+        <strong>표시</strong>를 켠 플랫폼만 대시보드에 나옵니다 (사용량 + 공식 상태 함께).<br />
         끄면 자동으로 다시 켜지지 않습니다. 언제든 여기서 다시 켤 수 있습니다.
       </p>
       <div class="filter-row">
@@ -58,6 +59,7 @@
       <div id="provider-settings" class="provider-settings"></div>
     </section>
 
+    <p class="hint" id="settings-error" role="alert" hidden></p>
     <script src="./settings.js" type="module"></script>
   </body>
 </html>

@@ -1,6 +1,6 @@
 # gary-ai-platform-monitor — Product Plan
 
-Status: **v0.2 usable app** (discovery · usage · health · CLI · Electron menu bar)
+Status: **v0.4 reliability pass** (collector process · per-provider TTL/backoff · Electron 44) — design refresh and floating widget next
 
 ## Vision
 
@@ -20,11 +20,11 @@ Notifications: **none** (no outage alerts).
 |----------|--------|
 | Repository | `garyjeong/gary-ai-platform-monitor` (**public**, MIT) |
 | Shell | **Electron** menu bar (Rust/Tauri not available on this machine; TS adapters reused natively) |
-| Health interval | Default **30s**, configurable **10–60s** |
+| Health interval | Default **60s**, configurable **30–300s** (usage has its own per-provider TTL) |
 | Outage notifications | **Disabled / not implemented** |
 | Browser cookie scan | Opt-in, default off (not required for seed adapters) |
 | First connect | Auto-enable monitoring on first discover |
-| Seed providers | Claude, Codex, Grok |
+| Providers | 15 (see README) — registered in `packages/runtime` `ALL_ADAPTERS` |
 | Usage display | Prefer **%**; Grok tokens/USD only |
 
 ## Architecture
@@ -32,10 +32,10 @@ Notifications: **none** (no outage alerts).
 ```
 apps/menubar          → Electron tray + popover UI
 apps/cli              → gai-pm snapshot|scan|usage|health|config
-packages/runtime      → seed adapters wired + takeSnapshot()
-packages/core         → types, registry, discovery, config, snapshot
+packages/runtime      → ALL_ADAPTERS + app collector + CLI snapshot
+packages/core         → types, config, collector (scheduler), HTTP helpers
 packages/health       → Statuspage v2
-packages/adapters/*   → claude | codex | grok
+packages/adapters/*   → 15 providers (claude, codex, grok, gemini, …)
 ```
 
 ## Data sources (seed)
@@ -63,6 +63,9 @@ packages/adapters/*   → claude | codex | grok
 - [x] Grok browser cookie % path (manual cookie + best-effort Chrome import)
 - [x] Extra adapters: Gemini, OpenRouter, Cursor, Copilot, Ollama, OpenCode, ChatGPT Desktop, Warp, Factory, Amp, Kiro, Kilo
 - [x] DMG packaging scripts + GitHub Release workflow + Homebrew cask template
+- [x] v0.4: collector utility process, per-provider TTL + backoff + Retry-After, last-good retention, atomic config, single instance, sandboxed renderer, Electron 44
+- [ ] v0.5: design refresh (shared components, light/dark, pace, freshness)
+- [ ] v0.6: floating widget (Electron panel window)
 - [ ] Notarization (requires user's Apple Developer cert — documented)
 
 ## Commands

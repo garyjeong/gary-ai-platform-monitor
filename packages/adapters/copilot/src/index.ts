@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import type { DetectResult, DetectSignal, ProviderAdapter } from '@gary-ai-platform-monitor/core';
-import { fetchCopilotUsage, getGhToken } from './usage.js';
+import { fetchCopilotUsage, findGhBinary, hasGhLogin } from './usage.js';
 
 export const copilotAdapter: ProviderAdapter = {
   meta: {
@@ -12,7 +12,7 @@ export const copilotAdapter: ProviderAdapter = {
       pageUrl: 'https://www.githubstatus.com',
       strategy: 'statuspage_v2',
       summaryUrl: 'https://www.githubstatus.com/api/v2/summary.json',
-      watchComponents: ['GitHub Copilot', 'API Requests', 'Git Operations'],
+      watchComponents: ['Copilot'],
     },
     capabilities: {
       percentWindows: true,
@@ -21,9 +21,15 @@ export const copilotAdapter: ProviderAdapter = {
     },
   },
   async detect(): Promise<DetectResult> {
+    // Presence only — the token itself is read once per fetch, never during detect.
     const signals: DetectSignal[] = [];
-    if (getGhToken()) {
-      signals.push({ kind: 'cli_credentials', detail: 'gh auth token' });
+    const ghLogin = Boolean(findGhBinary()) && hasGhLogin();
+    if (ghLogin) {
+      signals.push({ kind: 'cli_credentials', detail: 'gh hosts.yml (github.com)' });
+    }
+    const envVar = process.env.GH_TOKEN ? 'GH_TOKEN' : process.env.GITHUB_TOKEN ? 'GITHUB_TOKEN' : null;
+    if (envVar) {
+      signals.push({ kind: 'env_api_key', detail: envVar });
     }
     const copilotDir = path.join(os.homedir(), '.copilot');
     if (fs.existsSync(copilotDir)) {
@@ -32,7 +38,7 @@ export const copilotAdapter: ProviderAdapter = {
     return {
       found: signals.length > 0,
       signals,
-      confidence: getGhToken() ? 'high' : signals.length ? 'medium' : 'low',
+      confidence: ghLogin || envVar ? 'high' : signals.length ? 'medium' : 'low',
     };
   },
   async fetchUsage() {
@@ -40,5 +46,12 @@ export const copilotAdapter: ProviderAdapter = {
   },
 };
 
-export { fetchCopilotUsage, mapCopilotQuotas } from './usage.js';
+export {
+  fetchCopilotUsage,
+  fetchCopilotUsageWithToken,
+  mapCopilotQuotas,
+  classifyGithubRateLimit,
+  findGhBinary,
+  getGhToken,
+} from './usage.js';
 export default copilotAdapter;

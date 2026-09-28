@@ -1,6 +1,6 @@
 {
   "name": "gary-ai-platform-monitor",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "private": true,
   "description": "macOS menu bar app that discovers local AI platform logins, monitors usage quotas as percentages, and shows official status-page health.",
   "license": "MIT",
@@ -18,19 +18,15 @@
     "usage": "node --import tsx scripts/usage.ts",
     "snapshot": "npm run build -w @gary-ai-platform-monitor/runtime && npm run build -w @gary-ai-platform-monitor/cli && node apps/cli/dist/cli.js snapshot",
     "app": "npm run build && node scripts/ensure-electron.mjs && npm run start -w @gary-ai-platform-monitor/menubar",
-    "postinstall": "node scripts/ensure-electron.mjs",
-    "test": "npm run test -w @gary-ai-platform-monitor/core --if-present && npm run test -w @gary-ai-platform-monitor/health --if-present && npm run test -w @gary-ai-platform-monitor/adapter-claude --if-present && npm run test -w @gary-ai-platform-monitor/adapter-codex --if-present && npm run test -w @gary-ai-platform-monitor/adapter-gemini --if-present && npm run test -w @gary-ai-platform-monitor/adapter-openrouter --if-present && npm run test -w @gary-ai-platform-monitor/adapter-grok --if-present && npm run test -w @gary-ai-platform-monitor/adapter-copilot --if-present",
+    "test": "npm test --workspaces --if-present",
     "dist:mac": "npm run build && npm run dist -w @gary-ai-platform-monitor/menubar"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.13"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3"
-  },
-  "allowScripts": {
-    "electron@37.10.3": true
   }
 }

@@ -32,28 +32,42 @@ function hasAuthKey(): boolean {
   }
 }
 
-function readLocalStats(): { sessions: number; messages: number } | null {
-  if (!fs.existsSync(DB)) return null;
-  const tmp = path.join(os.tmpdir(), `gai-pm-opencode-${process.pid}.db`);
+function countRows(file: string): { sessions: number; messages: number } {
+  const db = new DatabaseSync(file, { readOnly: true });
   try {
-    fs.copyFileSync(DB, tmp);
-    const db = new DatabaseSync(tmp, { readOnly: true });
-    const sessions = (
-      db.prepare('SELECT COUNT(*) AS c FROM session').get() as { c: number }
-    ).c;
-    const messages = (
-      db.prepare('SELECT COUNT(*) AS c FROM message').get() as { c: number }
-    ).c;
+    const count = (table: string) =>
+      Number((db.prepare(`SELECT COUNT(*) AS c FROM ${table}`).get() as { c: number | bigint }).c);
+    return { sessions: count('session'), messages: count('message') };
+  } finally {
     db.close();
-    return { sessions, messages };
+  }
+}
+
+/**
+ * Snapshot opencode.db (+ -wal / -shm, so recent un-checkpointed rows are included) into a
+ * private temp dir, read it read-only, and remove the whole temp dir afterwards.
+ */
+export function readLocalStats(dbPath: string = DB): { sessions: number; messages: number } | null {
+  if (!fs.existsSync(dbPath)) return null;
+  let dir: string | undefined;
+  try {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gai-pm-opencode-'));
+    const copy = path.join(dir, 'opencode.db');
+    fs.copyFileSync(dbPath, copy);
+    for (const suffix of ['-wal', '-shm']) {
+      if (fs.existsSync(dbPath + suffix)) fs.copyFileSync(dbPath + suffix, copy + suffix);
+    }
+    try {
+      return countRows(copy);
+    } catch {
+      // A -shm copied mid-write can disagree with the -wal; let SQLite rebuild the index.
+      fs.rmSync(copy + '-shm', { force: true });
+      return countRows(copy);
+    }
   } catch {
     return null;
   } finally {
-    try {
-      fs.unlinkSync(tmp);
-    } catch {
-      // ignore
-    }
+    if (dir) fs.rmSync(dir, { recursive: true, force: true });
   }
 }
 
@@ -95,6 +109,7 @@ export const opencodeAdapter: ProviderAdapter = {
         windows: [],
         status: 'auth_required',
         updatedAt: Date.now(),
+        errorKind: 'auth',
         errorMessage: 'No OpenCode auth.json / database',
       };
     }
@@ -105,6 +120,7 @@ export const opencodeAdapter: ProviderAdapter = {
         windows: [],
         status: 'unsupported',
         updatedAt: Date.now(),
+        errorKind: 'unsupported',
         errorMessage: hasAuthKey()
           ? 'API key present; cloud quota endpoint not available — local DB unreadable'
           : 'No local stats',
@@ -132,7 +148,7 @@ export const opencodeAdapter: ProviderAdapter = {
       ],
       status: 'ok',
       updatedAt: Date.now(),
-      errorMessage: 'Cloud subscription % not exposed by OpenCode API',
+      note: 'Cloud subscription % not exposed by OpenCode API',
     };
   },
 };

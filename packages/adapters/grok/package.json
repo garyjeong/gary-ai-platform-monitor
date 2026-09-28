@@ -13,7 +13,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "node --import tsx --test src/usage.test.ts"
+    "test": "node --import tsx --test src/*.test.ts"
   },
   "dependencies": {
     "@gary-ai-platform-monitor/browser-cookies": "0.2.1",

@@ -11,14 +11,15 @@ Automatically discovers local logins, shows usage as **percent** when available,
 | **Auto-discover** | 15 providers: Claude, Codex, Grok, Gemini, OpenRouter, Cursor, Copilot, Ollama, OpenCode, ChatGPT Desktop, Warp, Factory, Amp, Kiro, Kilo |
 | **Monitor toggles** | Enable/disable each platform in Settings |
 | **Usage %** | Claude · Codex · Gemini · OpenRouter; Grok via browser cookie when available |
-| **Health** | Statuspage + xAI RSS (default **30s**) — badge only |
+| **Health** | Statuspage + xAI RSS (default **60s**, 30–300s) — badge only |
 | **Open at login** | Electron login item or LaunchAgent scripts |
 | **Local only** | Credentials stay on your machine |
+| **Polite polling** | Per-provider usage TTL (1–5 min), backoff, honors `Retry-After`; keeps last good numbers and shows their age |
 
 ## Requirements
 
-- macOS
-- Node.js 20+
+- macOS 13+ (Electron 44)
+- Node.js 22.13+ (uses `node:sqlite`)
 - Logged-in CLI tools where you want usage (Claude Code, Codex, Grok)
 
 ## Install & run
@@ -27,11 +28,10 @@ Automatically discovers local logins, shows usage as **percent** when available,
 git clone https://github.com/garyjeong/gary-ai-platform-monitor.git
 cd gary-ai-platform-monitor
 npm install
-npm run build
-npm run app
+npm run app   # builds, downloads the Electron binary on first run, starts the app
 ```
 
-The Dock icon is hidden; look for **AI NN%** in the menu bar. Click to open the panel.
+The Dock icon is hidden; click the menu bar icon to open the panel (right-click for Settings / Quit).
 
 ### CLI
 
@@ -85,9 +85,9 @@ export GAI_PM_GROK_COOKIE='sso=...; sso-rw=...'
 
 `~/.config/gary-ai-platform-monitor/config.json`
 
-- `health.intervalSeconds` — 10–60 (default 30)
-- `providers.<id>.monitor` — fetch usage / show in bar summary
-- `providers.<id>.showHealth` — poll status page for that provider
+- `health.intervalSeconds` — status-page poll, 30–300 (default 60). Older 10–29s values migrate to 30s
+- `scan.intervalMinutes` — local login re-detection (default 15)
+- `providers.<id>.monitor` — fetch usage + status for that provider (one toggle)
 - `defaults.autoEnableOnFirstConnect` — seed `monitor: true` on first detect
 
 ## Open at login
@@ -125,13 +125,15 @@ Gatekeeper may block unsigned apps: right-click → **Open**.
 ## Layout
 
 ```
-apps/menubar/     Electron tray app
-apps/cli/         gai-pm CLI
-packages/runtime/ Wired snapshot API
-packages/core/    Registry, config, snapshot
-packages/health/  Statuspage client
-packages/adapters/{claude,codex,grok}/
-docs/plan.md
+apps/menubar/            Electron tray app (main) + collector utility process
+apps/cli/                gai-pm CLI (read-only snapshot)
+packages/runtime/        ALL_ADAPTERS list, app collector, config helpers
+packages/core/           types, config (atomic), collector/scheduler, HTTP helpers
+packages/health/         Statuspage v2 + RSS status parsing
+packages/browser-cookies Chromium cookie reader (opt-in)
+packages/adapters/       claude, codex, grok, gemini, openrouter, cursor, copilot,
+                         ollama, opencode, apps (ChatGPT Desktop/Warp/Factory/Amp/Kiro/Kilo)
+docs/                    plan, privacy, adding-a-provider, packaging, grok-quota
 ```
 
 ## Privacy

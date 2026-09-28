@@ -28,7 +28,7 @@ export const codexAdapter: ProviderAdapter = {
       pageUrl: 'https://status.openai.com',
       strategy: 'statuspage_v2',
       summaryUrl: 'https://status.openai.com/api/v2/summary.json',
-      watchComponents: ['ChatGPT', 'API', 'Codex'],
+      watchComponents: ['Codex', 'CLI', 'Responses'],
     },
     capabilities: {
       percentWindows: true,
@@ -68,5 +68,14 @@ export const codexAdapter: ProviderAdapter = {
   },
 };
 
-export { readCodexUsage, mapCodexRateLimits, parseRateLimitsFromRolloutText } from './usage.js';
+export {
+  readCodexUsage,
+  mapCodexRateLimits,
+  parseRateLimitsFromRolloutText,
+  findLatestCodexSnapshot,
+  isCodexLimit,
+  codexPlanLabel,
+  type CodexRateLimits,
+  type CodexRateLimitSnapshot,
+} from './usage.js';
 export default codexAdapter;

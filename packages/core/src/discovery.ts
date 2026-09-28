@@ -1,5 +1,5 @@
 import { listAdapters } from './registry.js';
-import type { DetectResult, ProviderAdapter, ProviderSnapshot } from './types.js';
+import type { DetectResult, ProviderAdapter } from './types.js';
 
 export interface DiscoveryEntry {
   adapter: ProviderAdapter;
@@ -31,13 +31,4 @@ export async function scanProviders(
     })
   );
   return results;
-}
-
-export function lifecycleFromDetect(
-  detect: DetectResult,
-  monitor: boolean
-): ProviderSnapshot['lifecycle'] {
-  if (!detect.found) return 'not_found';
-  if (monitor) return 'monitored';
-  return 'discovered';
 }

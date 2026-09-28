@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # Electron ≥42 downloads its binary on first launch, not at install time.
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test

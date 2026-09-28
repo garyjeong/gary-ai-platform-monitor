@@ -9,13 +9,13 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { execFileSync } from 'node:child_process';
 import type {
   DetectResult,
   DetectSignal,
   ProviderAdapter,
   UsageResult,
 } from '@gary-ai-platform-monitor/core';
+import { hasClaudeKeychainItem } from './credentials.js';
 import { fetchClaudeUsage } from './usage.js';
 
 const HOME = os.homedir();
@@ -28,7 +28,7 @@ export const claudeAdapter: ProviderAdapter = {
       pageUrl: 'https://status.claude.com',
       strategy: 'statuspage_v2',
       summaryUrl: 'https://status.claude.com/api/v2/summary.json',
-      watchComponents: ['Claude Code', 'claude.ai', 'Claude API (api.anthropic.com)'],
+      watchComponents: ['Claude Code', 'Claude API', 'claude.ai'],
     },
     capabilities: {
       percentWindows: true,
@@ -40,17 +40,9 @@ export const claudeAdapter: ProviderAdapter = {
   async detect(): Promise<DetectResult> {
     const signals: DetectSignal[] = [];
 
-    if (process.platform === 'darwin') {
-      try {
-        execFileSync(
-          '/usr/bin/security',
-          ['find-generic-password', '-s', 'Claude Code-credentials', '-w'],
-          { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 3000 }
-        );
-        signals.push({ kind: 'keychain', detail: 'Claude Code-credentials' });
-      } catch {
-        // not in keychain
-      }
+    // Existence check only — never pulls the secret (no `-w`), so no Keychain prompt.
+    if (await hasClaudeKeychainItem()) {
+      signals.push({ kind: 'keychain', detail: 'Claude Code-credentials' });
     }
 
     const credFile = path.join(HOME, '.claude', '.credentials.json');
@@ -79,5 +71,10 @@ export const claudeAdapter: ProviderAdapter = {
   },
 };
 
-export { fetchClaudeUsage, mapOAuthUsageToWindows } from './usage.js';
+export {
+  fetchClaudeUsage,
+  mapOAuthUsageToWindows,
+  type ClaudeUsageDeps,
+  type ClaudeUsageCache,
+} from './usage.js';
 export default claudeAdapter;

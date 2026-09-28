@@ -5,11 +5,26 @@
 3. Implement `ProviderAdapter` in `src/index.ts`:
    - `meta.id`, `displayName`, `capabilities`
    - optional `meta.status` for public health
-   - `detect()` — local signals only; never log secrets
-   - `fetchUsage()` — prefer `usedPercent` on windows
-4. Register in `scripts/register-seed.ts` (and later app bootstrap)
-5. Add root `package.json` build `-w` entry if needed
+   - `detect()` — local signals only, async, never read a secret just to check presence
+   - `fetchUsage()` — prefer `usedPercent` on windows (see contract below)
+4. Register it in **`packages/runtime/src/index.ts` → `ALL_ADAPTERS`** (app, CLI and dev scripts all read this list)
+   and add the package to `packages/runtime/package.json` dependencies
+5. Add the workspace to the root `package.json` `build` chain (before `runtime`) and, if it has tests, to `test`
 6. Document signals and ToS notes in this folder or README
+
+## Usage contract
+
+- Use `fetchJson` / `fetchText` from `@gary-ai-platform-monitor/core` for every request: they add a timeout,
+  classify failures (`errorKind`) and parse `Retry-After` (`retryAfterMs`).
+- Do not retry or loop. The collector schedules calls (per-provider TTL in `core/src/collector.ts`,
+  exponential backoff, Retry-After) and keeps the last good numbers when a call fails.
+- `resetsAt` is epoch **seconds**. Set `windowSeconds` when the window length is known (enables pace display).
+  Rolling aggregates ("last 7 days") use `windowKind: 'rolling'` and no `resetsAt`.
+- `observedAt` (ms) is when the numbers were observed at the source. Cached or log-derived data keeps
+  its original time — never stamp old data with "now".
+- `401/403` → `status: 'auth_required'`; everything else that fails → `'error'` (or `'stale'` with cached windows).
+- Put non-error display text (plan tier) in `note`, not `errorMessage`. Error text must not contain secrets
+  (`scrubSecrets`).
 
 ## Health
 
@@ -24,4 +39,6 @@ status: {
 }
 ```
 
-No authentication. Poll interval is app-global (default 30s). No notifications.
+When `watchComponents` match, the indicator comes from the worst watched component; otherwise the page-wide
+indicator is used. No authentication. Status pages are polled every `health.intervalSeconds`
+(default 60s, 30–300s) and shared between providers that use the same page. No notifications.

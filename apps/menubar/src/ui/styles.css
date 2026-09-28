@@ -394,3 +394,25 @@ select {
   padding: 20px;
   text-align: center;
 }
+
+/* ── v0.4 freshness states ─────────────────────────────── */
+.card-stale .value,
+.card-stale .bar i {
+  opacity: 0.55;
+}
+.value.passed {
+  color: var(--muted);
+  font-weight: 500;
+}
+.bar.bar-passed i {
+  background: var(--muted);
+  opacity: 0.35;
+}
+.icon-btn:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

@@ -9,16 +9,46 @@
  *   POST https://grok.com/rest/rate-limits  body: { modelName }
  *
  * CLI OAuth cannot call credits (cookie session required).
+ *
+ * Failure policy: only 401/403 (or gRPC UNAUTHENTICATED/PERMISSION_DENIED) mean the session
+ * is gone → 'auth_required'. 429 / network / timeout / 5xx are reported as 'error' with the
+ * classified errorKind. The fallback endpoints are only tried when the primary looks
+ * *changed* (404, gRPC UNIMPLEMENTED/NOT_FOUND, or an unparseable/empty reply).
  */
 
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import type { UsageResult, UsageWindow } from '@gary-ai-platform-monitor/core';
+import {
+  classifyError,
+  classifyHttpStatus,
+  fetchJson,
+  parseRetryAfter,
+  scrubSecrets,
+  type FetchErrorKind,
+  type UsageResult,
+  type UsageWindow,
+} from '@gary-ai-platform-monitor/core';
 import {
   readChromiumCookieHeader,
   readManualCookieHeader,
 } from '@gary-ai-platform-monitor/browser-cookies';
+
+const CREDITS_URL = 'https://grok.com/grok_api_v2.GrokBuildBilling/GetGrokCreditsConfig';
+const RATE_LIMITS_URL = 'https://grok.com/rest/rate-limits';
+const CREDITS_TIMEOUT_MS = 12_000;
+const RATE_LIMIT_TIMEOUT_MS = 10_000;
+const BROWSER_UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
+
+/** A failed grok.com call, classified. `endpointChanged` → worth trying the fallback. */
+export interface GrokCallFailure {
+  ok: false;
+  errorKind: FetchErrorKind;
+  errorMessage: string;
+  retryAfterMs?: number;
+  endpointChanged: boolean;
+}
 
 /** Models for optional short-window rate-limit fallback. */
 export const GROK_RATE_LIMIT_MODELS = [
@@ -69,10 +99,10 @@ export interface GrokRateLimitPayload {
   resetTime?: string | number;
 }
 
-export function resolveGrokCookieHeader(includeBrowser: boolean): {
+export async function resolveGrokCookieHeader(includeBrowser: boolean): Promise<{
   header: string | null;
   source: string;
-} {
+}> {
   const manual = readManualCookieHeader([
     'GAI_PM_GROK_COOKIE',
     'GROK_COOKIE',
@@ -97,7 +127,7 @@ export function resolveGrokCookieHeader(includeBrowser: boolean): {
 
   if (!includeBrowser) return { header: null, source: 'none' };
 
-  const auto = readChromiumCookieHeader({
+  const auto = await readChromiumCookieHeader({
     hostLike: ['%.grok.com', 'grok.com'],
     names: ['sso', 'sso-rw', 'x-userid', 'cf_clearance'],
   });
@@ -167,16 +197,45 @@ function decodeTimestampSec(buf: Buffer): number | undefined {
   return undefined;
 }
 
-function parseGrpcWebFrames(buf: Buffer): Buffer | null {
+/** Split a grpc-web body into the first data frame and the trailer's grpc-status. */
+export function parseGrpcWebFrames(buf: Buffer): { message: Buffer | null; grpcStatus?: number } {
   let o = 0;
+  let message: Buffer | null = null;
+  let grpcStatus: number | undefined;
   while (o + 5 <= buf.length) {
     const flags = buf[o]!;
     const len = buf.readUInt32BE(o + 1);
     const data = buf.subarray(o + 5, o + 5 + len);
     o += 5 + len;
-    if (flags === 0) return data; // data frame
+    if ((flags & 0x80) === 0) {
+      if (!message) message = data; // data frame
+    } else {
+      const m = /grpc-status:\s*(\d+)/i.exec(data.toString('latin1')); // trailer frame
+      if (m) grpcStatus = Number(m[1]);
+    }
   }
-  return null;
+  return { message, grpcStatus };
+}
+
+/** gRPC status code → FetchErrorKind; `endpointChanged` for codes meaning "no such method". */
+export function classifyGrpcStatus(code: number): { errorKind: FetchErrorKind; endpointChanged: boolean } {
+  switch (code) {
+    case 16: // UNAUTHENTICATED
+    case 7: // PERMISSION_DENIED
+      return { errorKind: 'auth', endpointChanged: false };
+    case 8: // RESOURCE_EXHAUSTED
+      return { errorKind: 'rate_limited', endpointChanged: false };
+    case 4: // DEADLINE_EXCEEDED
+      return { errorKind: 'timeout', endpointChanged: false };
+    case 13: // INTERNAL
+    case 14: // UNAVAILABLE
+      return { errorKind: 'server', endpointChanged: false };
+    case 5: // NOT_FOUND
+    case 12: // UNIMPLEMENTED
+      return { errorKind: 'unsupported', endpointChanged: true };
+    default:
+      return { errorKind: 'unknown', endpointChanged: false };
+  }
 }
 
 /**
@@ -268,13 +327,26 @@ export function creditsConfigToWindows(cfg: GrokCreditsConfig): UsageWindow[] {
       : cfg.periodType === 'monthly'
         ? 'monthly'
         : 'period';
+  const periodSeconds =
+    cfg.periodStartSec !== undefined &&
+    cfg.periodEndSec !== undefined &&
+    cfg.periodEndSec > cfg.periodStartSec
+      ? cfg.periodEndSec - cfg.periodStartSec
+      : cfg.periodType === 'weekly'
+        ? 604_800
+        : undefined;
+  const timing: Pick<UsageWindow, 'resetsAt' | 'windowSeconds' | 'windowKind'> = {
+    resetsAt: cfg.periodEndSec,
+    windowSeconds: periodSeconds,
+    windowKind: 'fixed',
+  };
   const windows: UsageWindow[] = [
     {
       id: 'supergrok-heavy',
       usedPercent: cfg.creditUsagePercent,
       label: `SuperGrok Heavy (${periodLabel})`,
       source: 'browser',
-      resetsAt: cfg.periodEndSec,
+      ...timing,
     },
   ];
 
@@ -287,44 +359,94 @@ export function creditsConfigToWindows(cfg: GrokCreditsConfig): UsageWindow[] {
       usedPercent: p.usagePercent,
       label: p.label,
       source: 'browser',
-      resetsAt: cfg.periodEndSec,
+      ...timing,
     });
   }
 
   return windows;
 }
 
-async function fetchGrokCreditsConfig(
-  cookieHeader: string
-): Promise<GrokCreditsConfig | null> {
+function failure(
+  errorKind: FetchErrorKind,
+  errorMessage: string,
+  endpointChanged: boolean,
+  retryAfterMs?: number
+): GrokCallFailure {
+  return { ok: false, errorKind, errorMessage: scrubSecrets(errorMessage), endpointChanged, retryAfterMs };
+}
+
+/**
+ * POST GetGrokCreditsConfig (grpc-web, binary — so plain fetch with a timeout and the
+ * shared classifiers instead of fetchJson/fetchText).
+ */
+export async function fetchGrokCreditsConfig(
+  cookieHeader: string,
+  fetchImpl: typeof fetch = fetch
+): Promise<{ ok: true; cfg: GrokCreditsConfig } | GrokCallFailure> {
+  let res: Response;
   try {
-    const res = await fetch(
-      'https://grok.com/grok_api_v2.GrokBuildBilling/GetGrokCreditsConfig',
-      {
-        method: 'POST',
-        headers: {
-          Cookie: cookieHeader,
-          'Content-Type': 'application/grpc-web+proto',
-          Accept: 'application/grpc-web+proto',
-          'x-grpc-web': '1',
-          Origin: 'https://grok.com',
-          Referer: 'https://grok.com/',
-          'User-Agent':
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-        },
-        // empty protobuf message framed for grpc-web
-        body: Buffer.from([0, 0, 0, 0, 0]),
-        signal: AbortSignal.timeout(12_000),
-      }
-    );
-    if (!res.ok) return null;
-    const buf = Buffer.from(await res.arrayBuffer());
-    const msg = parseGrpcWebFrames(buf);
-    if (!msg) return null;
-    return parseGrokCreditsConfigMessage(msg);
-  } catch {
-    return null;
+    res = await fetchImpl(CREDITS_URL, {
+      method: 'POST',
+      headers: {
+        Cookie: cookieHeader,
+        'Content-Type': 'application/grpc-web+proto',
+        Accept: 'application/grpc-web+proto',
+        'x-grpc-web': '1',
+        Origin: 'https://grok.com',
+        Referer: 'https://grok.com/',
+        'User-Agent': BROWSER_UA,
+      },
+      // empty protobuf message framed for grpc-web
+      body: Buffer.from([0, 0, 0, 0, 0]),
+      signal: AbortSignal.timeout(CREDITS_TIMEOUT_MS),
+    });
+  } catch (err) {
+    return failure(classifyError(err), `grok.com credits: ${errText(err)}`, false);
   }
+
+  if (!res.ok) {
+    await res.body?.cancel().catch(() => undefined);
+    const retryAfterMs = parseRetryAfter(res.headers.get('retry-after'));
+    if (res.status === 404) {
+      return failure('unsupported', 'grok.com credits endpoint HTTP 404', true);
+    }
+    return failure(classifyHttpStatus(res.status), `grok.com credits HTTP ${res.status}`, false, retryAfterMs);
+  }
+
+  // Trailers-only gRPC errors arrive as HTTP 200 with grpc-status in the headers.
+  const headerStatus = Number(res.headers.get('grpc-status') ?? '0');
+  if (headerStatus !== 0 && Number.isFinite(headerStatus)) {
+    await res.body?.cancel().catch(() => undefined);
+    const c = classifyGrpcStatus(headerStatus);
+    return failure(c.errorKind, `grok.com credits gRPC status ${headerStatus}`, c.endpointChanged);
+  }
+
+  let buf: Buffer;
+  try {
+    buf = Buffer.from(await res.arrayBuffer());
+  } catch (err) {
+    const kind = classifyError(err);
+    return failure(kind === 'unknown' ? 'parse' : kind, `grok.com credits: ${errText(err)}`, false);
+  }
+  const { message, grpcStatus } = parseGrpcWebFrames(buf);
+  if (grpcStatus !== undefined && grpcStatus !== 0) {
+    const c = classifyGrpcStatus(grpcStatus);
+    return failure(c.errorKind, `grok.com credits gRPC status ${grpcStatus}`, c.endpointChanged);
+  }
+  const cfg = message ? parseGrokCreditsConfigMessage(message) : null;
+  if (!cfg) {
+    // Empty/unknown reply: treat as "endpoint changed" (or no credit pool) → fallback.
+    return failure('parse', 'grok.com credits reply had no usage fields', true);
+  }
+  return { ok: true, cfg };
+}
+
+function errText(err: unknown): string {
+  if (err instanceof Error) {
+    const cause = (err as { cause?: unknown }).cause;
+    return cause instanceof Error ? `${err.message}: ${cause.message}` : err.message;
+  }
+  return 'request failed';
 }
 
 // ─── short rate-limit fallback ──────────────────────────────────────
@@ -382,6 +504,10 @@ function mapQueryWindow(
       usedPercent: used,
       label,
       source: 'browser',
+      windowSeconds:
+        typeof rec.windowSizeSeconds === 'number' && rec.windowSizeSeconds > 0
+          ? rec.windowSizeSeconds
+          : undefined,
       usedAbsolute: total - remaining,
       unit: 'queries',
     };
@@ -458,78 +584,106 @@ function parseReset(v: unknown): number | undefined {
 
 async function fetchOneModel(
   header: string,
-  modelName: string
-): Promise<UsageWindow[]> {
-  try {
-    const res = await fetch('https://grok.com/rest/rate-limits', {
-      method: 'POST',
-      headers: {
-        Cookie: header,
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        Origin: 'https://grok.com',
-        Referer: 'https://grok.com/',
-        'User-Agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-      },
-      body: JSON.stringify({ modelName }),
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!res.ok) return [];
-    const json: unknown = await res.json();
-    return mapRateLimitPayload(json, modelName);
-  } catch {
-    return [];
+  modelName: string,
+  fetchImpl?: typeof fetch
+): Promise<{ ok: true; windows: UsageWindow[] } | GrokCallFailure> {
+  const res = await fetchJson<unknown>(RATE_LIMITS_URL, {
+    method: 'POST',
+    headers: {
+      Cookie: header,
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      Origin: 'https://grok.com',
+      Referer: 'https://grok.com/',
+      'User-Agent': BROWSER_UA,
+    },
+    body: JSON.stringify({ modelName }),
+    timeoutMs: RATE_LIMIT_TIMEOUT_MS,
+    fetchImpl,
+  });
+  if (!res.ok) {
+    return failure(
+      res.errorKind,
+      `grok.com rate-limits: ${res.errorMessage}`,
+      res.status === 404,
+      res.retryAfterMs
+    );
   }
+  return { ok: true, windows: mapRateLimitPayload(res.data, modelName) };
 }
 
-/**
- * Browser cookie usage: SuperGrok Heavy pool first, then optional burst windows.
- */
-export async function fetchGrokBrowserUsage(
-  includeBrowserCookies: boolean
-): Promise<UsageResult | null> {
-  const { header, source } = resolveGrokCookieHeader(includeBrowserCookies);
-  if (!header) return null;
+const RELOGIN_HINT =
+  'grok.com session expired or rejected — log in to grok.com in Chrome again (or refresh ~/.config/gary-ai-platform-monitor/grok.cookie)';
 
-  // 1) Weekly/monthly SuperGrok Heavy credit pool (what Settings UI shows)
-  const credits = await fetchGrokCreditsConfig(header);
-  if (credits) {
-    const windows = creditsConfigToWindows(credits);
-    return {
-      providerId: 'grok',
-      windows,
-      status: 'ok',
-      updatedAt: Date.now(),
-      errorMessage: `SuperGrok Heavy via ${source}`,
-    };
-  }
-
-  // 2) Fallback: short burst rate-limits (not the same metric as Heavy %)
-  const results = await Promise.all(
-    GROK_RATE_LIMIT_MODELS.map((m) => fetchOneModel(header, m))
-  );
-  const windows: UsageWindow[] = [];
-  for (const part of results) windows.push(...part);
-  const deduped = dedupeWindows(windows);
-  if (deduped.length > 0) {
-    return {
-      providerId: 'grok',
-      windows: deduped,
-      status: 'ok',
-      updatedAt: Date.now(),
-      errorMessage: `burst rate-limits via ${source} (not SuperGrok Heavy pool)`,
-    };
-  }
-
+function failureResult(f: GrokCallFailure, now: number): UsageResult {
   return {
     providerId: 'grok',
     windows: [],
-    status: 'auth_required',
-    updatedAt: Date.now(),
-    errorMessage:
-      'Grok cookies present but credits/rate-limits returned no %. Login to grok.com in Chrome or paste Cookie into ~/.config/gary-ai-platform-monitor/grok.cookie',
+    status: f.errorKind === 'auth' ? 'auth_required' : 'error',
+    updatedAt: now,
+    errorKind: f.errorKind,
+    errorMessage: f.errorKind === 'auth' ? RELOGIN_HINT : scrubSecrets(f.errorMessage),
+    retryAfterMs: f.retryAfterMs,
   };
+}
+
+/**
+ * Browser cookie usage: SuperGrok Heavy pool first; burst rate-limits only when the
+ * credits endpoint looks changed. Returns null when no cookie is available.
+ */
+export async function fetchGrokBrowserUsage(
+  includeBrowserCookies: boolean,
+  fetchImpl?: typeof fetch
+): Promise<UsageResult | null> {
+  const { header } = await resolveGrokCookieHeader(includeBrowserCookies);
+  if (!header) return null;
+  return fetchGrokBrowserUsageWithCookie(header, fetchImpl);
+}
+
+export async function fetchGrokBrowserUsageWithCookie(
+  header: string,
+  fetchImpl?: typeof fetch
+): Promise<UsageResult> {
+  // 1) Weekly/monthly SuperGrok Heavy credit pool (what Settings UI shows)
+  const credits = await fetchGrokCreditsConfig(header, fetchImpl);
+  if (credits.ok) {
+    return {
+      providerId: 'grok',
+      windows: creditsConfigToWindows(credits.cfg),
+      status: 'ok',
+      updatedAt: Date.now(),
+    };
+  }
+  // 429 / network / timeout / 5xx / auth: report it; hammering 4 more endpoints won't help.
+  if (!credits.endpointChanged) return failureResult(credits, Date.now());
+
+  // 2) Fallback: short burst rate-limits (not the same metric as Heavy %)
+  const results = await Promise.all(
+    GROK_RATE_LIMIT_MODELS.map((m) => fetchOneModel(header, m, fetchImpl))
+  );
+  const windows: UsageWindow[] = [];
+  const failures: GrokCallFailure[] = [];
+  for (const r of results) {
+    if (r.ok) windows.push(...r.windows);
+    else failures.push(r);
+  }
+  const deduped = dedupeWindows(windows);
+  if (deduped.length > 0) {
+    return { providerId: 'grok', windows: deduped, status: 'ok', updatedAt: Date.now() };
+  }
+
+  const authFailure = failures.find((f) => f.errorKind === 'auth');
+  if (authFailure) return failureResult(authFailure, Date.now());
+  const other = failures.find((f) => !f.endpointChanged);
+  if (other) return failureResult(other, Date.now());
+  return failureResult(
+    failure(
+      'unsupported',
+      `grok.com usage endpoints look changed (${credits.errorMessage}); rate-limit fallback returned no usage`,
+      true
+    ),
+    Date.now()
+  );
 }
 
 function dedupeWindows(windows: UsageWindow[]): UsageWindow[] {

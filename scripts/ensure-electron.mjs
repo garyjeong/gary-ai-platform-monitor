@@ -1,34 +1,35 @@
 /**
- * Ensure electron path.txt exists when dist was restored manually
- * (npm allow-scripts can skip postinstall on some environments).
+ * Electron ≥42 no longer downloads its binary in a postinstall script; it downloads on
+ * first launch. `npm run app` calls this to fetch it up front with a clear message,
+ * so a first run does not look like a hang. Safe to run repeatedly.
  */
-import { existsSync, writeFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { existsSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const electronDir = join(root, 'node_modules', 'electron');
-const pathTxt = join(electronDir, 'path.txt');
-const macBinary = join(
-  electronDir,
-  'dist/Electron.app/Contents/MacOS/Electron'
-);
+const require = createRequire(import.meta.url);
 
-if (existsSync(macBinary) && !existsSync(pathTxt)) {
-  writeFileSync(pathTxt, 'Electron.app/Contents/MacOS/Electron');
-  console.log('[ensure-electron] wrote path.txt');
-}
-
+let electronPkgDir;
 try {
-  const require = createRequire(import.meta.url);
-  const p = require('electron');
-  if (typeof p === 'string' && existsSync(p)) {
-    console.log('[ensure-electron] electron binary:', p);
-  }
-} catch (err) {
-  console.warn(
-    '[ensure-electron] Electron binary missing. Run: npm install electron --foreground-scripts'
-  );
-  console.warn(String(err?.message ?? err));
+  electronPkgDir = dirname(require.resolve('electron/package.json', { paths: [join(root, 'apps', 'menubar')] }));
+} catch {
+  console.warn('[ensure-electron] electron package not installed (run npm install)');
+  process.exit(0);
 }
+
+const binary = join(electronPkgDir, 'dist', 'Electron.app', 'Contents', 'MacOS', 'Electron');
+if (process.platform === 'darwin' && existsSync(binary)) {
+  process.exit(0);
+}
+
+const installer = join(electronPkgDir, 'install.js');
+if (!existsSync(installer)) {
+  console.warn('[ensure-electron] install.js not found; Electron will download on first launch');
+  process.exit(0);
+}
+console.log('[ensure-electron] downloading Electron binary…');
+const res = spawnSync(process.execPath, [installer], { cwd: electronPkgDir, stdio: 'inherit' });
+process.exit(res.status ?? 0);

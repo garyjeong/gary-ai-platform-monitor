@@ -17,3 +17,4 @@ apps/menubar/dist/
 .vscode/*
 !.vscode/extensions.json
 apps/menubar/build/icon.iconset/
+.omc/

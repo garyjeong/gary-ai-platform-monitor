@@ -13,22 +13,22 @@
   <body>
     <header class="top">
       <div>
-        <h1>Platforms</h1>
+        <h1>AI 사용량</h1>
         <p class="sub" id="updated">—</p>
       </div>
       <div class="actions">
-        <button type="button" class="icon-btn" id="btn-refresh" title="Refresh" aria-label="Refresh">↻</button>
-        <button type="button" class="icon-btn" id="btn-settings" title="Settings" aria-label="Settings">⚙</button>
-        <button type="button" class="icon-btn ghost" id="btn-quit" title="Quit" aria-label="Quit">✕</button>
+        <button type="button" class="icon-btn" id="btn-refresh" title="새로고침" aria-label="새로고침">↻</button>
+        <button type="button" class="icon-btn" id="btn-settings" title="설정" aria-label="설정">⚙</button>
+        <button type="button" class="icon-btn ghost" id="btn-close" title="닫기 (앱은 계속 실행)" aria-label="닫기">✕</button>
       </div>
     </header>
 
-    <p class="summary-meta" id="summary-meta">Loading…</p>
+    <p class="summary-meta" id="summary-meta" role="status" aria-live="polite">불러오는 중…</p>
 
     <section class="list" id="providers"></section>
 
     <footer class="footer-hint">
-      설정에서 켠 플랫폼만 표시됩니다 (사용량 + health).
+      설정에서 켠 플랫폼만 표시됩니다. 종료는 메뉴 막대 아이콘 우클릭.
     </footer>
 
     <script src="./app.js" type="module"></script>

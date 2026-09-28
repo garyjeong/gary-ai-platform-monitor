@@ -14,9 +14,11 @@ import {
   getProviderPref,
   listAdapters,
   loadConfig,
+  providerIds,
   takeSnapshot,
   updateMonitor,
 } from '@gary-ai-platform-monitor/runtime';
+import { scanProviders } from '@gary-ai-platform-monitor/core';
 import { pollHealth } from '@gary-ai-platform-monitor/health';
 
 const [cmd, ...args] = process.argv.slice(2);
@@ -57,7 +59,7 @@ function printHelp(): void {
   console.log(`gary-ai-platform-monitor CLI (gai-pm)
 
 Usage:
-  gai-pm snapshot              Full snapshot (discover + usage + health + prefs)
+  gai-pm snapshot              Full snapshot (discover + usage + health + prefs); read-only
   gai-pm scan                  Local detect only
   gai-pm usage                 Usage windows for monitored providers
   gai-pm health                Public status pages
@@ -72,17 +74,14 @@ async function cmdSnapshot(): Promise<void> {
 }
 
 async function cmdScan(): Promise<void> {
-  ensureSeedAdapters();
-  const out = [];
-  for (const a of listAdapters()) {
-    const d = await a.detect();
-    out.push({
-      id: a.meta.id,
-      found: d.found,
-      confidence: d.confidence,
-      signals: d.signals,
-    });
-  }
+  // scanProviders isolates a throwing detect() so one adapter cannot abort the command.
+  const entries = await scanProviders(ensureSeedAdapters());
+  const out = entries.map(({ adapter, detect }) => ({
+    id: adapter.meta.id,
+    found: detect.found,
+    confidence: detect.confidence,
+    signals: detect.signals,
+  }));
   console.log(JSON.stringify({ providers: out }, null, 2));
 }
 
@@ -100,7 +99,9 @@ async function cmdUsage(): Promise<void> {
 
 async function cmdHealth(): Promise<void> {
   ensureSeedAdapters();
-  const results = await pollHealth(listAdapters());
+  const results = await pollHealth(
+    listAdapters().filter((a) => a.meta.status && a.meta.status.strategy !== 'custom')
+  );
   console.log(JSON.stringify({ health: results }, null, 2));
 }
 
@@ -116,6 +117,11 @@ async function cmdConfig(args: string[]): Promise<void> {
     const flag = args[2];
     if (!id || (flag !== 'on' && flag !== 'off')) {
       console.error('Usage: gai-pm config set-monitor <id> <on|off>');
+      process.exitCode = 1;
+      return;
+    }
+    if (!providerIds().includes(id)) {
+      console.error(`Unknown provider id: ${id}. Known: ${providerIds().join(', ')}`);
       process.exitCode = 1;
       return;
     }
