@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI 사용량 위젯</title>
+    <link rel="stylesheet" href="./components.css" />
+    <link rel="stylesheet" href="./shell.css" />
+  </head>
+  <body class="surface-widget">
+    <div class="widget material widget-compact" id="widget" aria-label="AI 사용량 위젯 — 끌어서 옮기기, 우클릭으로 메뉴">
+      <div class="widget-compact__grid" id="grid"></div>
+    </div>
+    <script src="./components.js"></script>
+    <script src="./widget.js"></script>
+  </body>
+</html>

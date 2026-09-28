@@ -7,30 +7,24 @@
       content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AI Platform Monitor</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <title>AI 사용량</title>
+    <link rel="stylesheet" href="./components.css" />
+    <link rel="stylesheet" href="./shell.css" />
   </head>
-  <body>
-    <header class="top">
-      <div>
-        <h1>AI 사용량</h1>
-        <p class="sub" id="updated">—</p>
-      </div>
-      <div class="actions">
-        <button type="button" class="icon-btn" id="btn-refresh" title="새로고침" aria-label="새로고침">↻</button>
-        <button type="button" class="icon-btn" id="btn-settings" title="설정" aria-label="설정">⚙</button>
-        <button type="button" class="icon-btn ghost" id="btn-close" title="닫기 (앱은 계속 실행)" aria-label="닫기">✕</button>
-      </div>
-    </header>
-
-    <p class="summary-meta" id="summary-meta" role="status" aria-live="polite">불러오는 중…</p>
-
-    <section class="list" id="providers"></section>
-
-    <footer class="footer-hint">
-      설정에서 켠 플랫폼만 표시됩니다. 종료는 메뉴 막대 아이콘 우클릭.
-    </footer>
-
-    <script src="./app.js" type="module"></script>
+  <body class="surface-popover">
+    <div class="popover material" id="popover">
+      <header class="popover-header">
+        <h1 class="popover-title">AI 사용량</h1>
+        <p class="popover-state" id="state" role="status" aria-live="polite"><span>불러오는 중…</span></p>
+      </header>
+      <div class="popover-list" id="list"></div>
+      <footer class="popover-footer">
+        <button type="button" class="pbtn" id="btn-settings" title="설정 (⌘,)"><svg class="ic" aria-hidden="true"><use href="#i-gear"/></svg><span>설정</span></button>
+        <label class="pswitch" for="widget-toggle">위젯 표시<input id="widget-toggle" type="checkbox" role="switch" class="switch switch--mini" /></label>
+        <button type="button" class="pbtn pbtn--icon" id="btn-more" aria-haspopup="menu" aria-label="더 보기" title="더 보기"><svg class="ic" aria-hidden="true"><use href="#i-more"/></svg></button>
+      </footer>
+    </div>
+    <script src="./components.js"></script>
+    <script src="./app.js"></script>
   </body>
 </html>

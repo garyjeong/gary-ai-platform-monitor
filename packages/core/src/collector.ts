@@ -39,6 +39,17 @@ export const USAGE_TTL_MS: Readonly<Record<string, number>> = {
 };
 export const DEFAULT_USAGE_TTL_MS = 300_000;
 
+/** Recent-rate estimate: samples from the last 30 min, at least 15 min apart end to end. */
+const RATE_LOOKBACK_MS = 30 * 60_000;
+const RATE_MIN_SPAN_MS = 15 * 60_000;
+/** Same window if resetsAt moves by less than this (APIs jitter by a few seconds). */
+const RESET_TOLERANCE_S = 120;
+
+interface RateTrack {
+  resetsAt?: number;
+  samples: Array<{ t: number; pct: number }>;
+}
+
 export interface CollectorPolicy {
   usageTtlMs(providerId: string): number;
   /** Stop waiting for one adapter call after this long (the call itself is not cancelled). */
@@ -108,6 +119,7 @@ export class Collector {
   private readonly now: () => number;
   private readonly entries = new Map<string, Entry>();
   private readonly healthCache = new Map<string, HealthCacheEntry>();
+  private readonly rateTracks = new Map<string, RateTrack>();
 
   private detectState: RefreshState = { consecutiveFailures: 0 };
   private detectPromise: Promise<void> | null = null;
@@ -425,7 +437,10 @@ export class Collector {
         state.lastErrorKind = undefined;
         state.lastSuccessAt = now;
         state.nextAt = now + ttl;
-        entry.usage = { ...result, observedAt: result.observedAt ?? result.updatedAt };
+        entry.usage = this.annotateRates(id, {
+          ...result,
+          observedAt: result.observedAt ?? result.updatedAt,
+        });
         if (result.status === 'ok' && result.windows.length > 0) entry.lastGoodUsage = entry.usage;
       } else {
         state.consecutiveFailures += 1;
@@ -494,6 +509,36 @@ export class Collector {
     }).finally(() => {
       state.inFlight = false;
     });
+  }
+
+  /**
+   * Track % samples per fixed window and attach `recentRatePerHour` once there is enough
+   * history. History lives in memory only; it restarts with the app or when the window resets.
+   */
+  private annotateRates(providerId: string, usage: UsageResult): UsageResult {
+    const t = usage.observedAt ?? usage.updatedAt;
+    const windows = usage.windows.map((w) => {
+      if (typeof w.usedPercent !== 'number' || w.windowKind === 'rolling') return w;
+      const key = `${providerId}:${w.id}`;
+      let track = this.rateTracks.get(key);
+      const last = track?.samples[track.samples.length - 1];
+      const sameWindow =
+        track !== undefined &&
+        (track.resetsAt === w.resetsAt ||
+          (track.resetsAt !== undefined &&
+            w.resetsAt !== undefined &&
+            Math.abs(track.resetsAt - w.resetsAt) <= RESET_TOLERANCE_S));
+      if (!track || !sameWindow || (last && w.usedPercent < last.pct)) {
+        track = { resetsAt: w.resetsAt, samples: [] };
+        this.rateTracks.set(key, track);
+      }
+      const prev = track.samples[track.samples.length - 1];
+      if (!prev || t > prev.t) track.samples.push({ t, pct: w.usedPercent });
+      track.samples = track.samples.filter((s) => s.t >= t - 3 * RATE_LOOKBACK_MS).slice(-120);
+      const rate = recentRate(track.samples);
+      return rate === undefined ? w : { ...w, recentRatePerHour: rate };
+    });
+    return { ...usage, windows };
   }
 
   /** Several providers share one status page (e.g. Codex + ChatGPT) — fetch it once. */
@@ -580,6 +625,16 @@ function mergeWithLastGood(
     errorMessage: result.errorMessage,
     retryAfterMs: result.retryAfterMs,
   };
+}
+
+/** %p per hour over the last RATE_LOOKBACK_MS, or undefined with too little history. */
+export function recentRate(samples: ReadonlyArray<{ t: number; pct: number }>): number | undefined {
+  const last = samples[samples.length - 1];
+  if (!last) return undefined;
+  const first = samples.find((s) => s.t >= last.t - RATE_LOOKBACK_MS);
+  if (!first || last.t - first.t < RATE_MIN_SPAN_MS) return undefined;
+  const rate = ((last.pct - first.pct) / (last.t - first.t)) * 3_600_000;
+  return Math.max(0, Math.round(rate * 10) / 10);
 }
 
 class DeadlineError extends Error {

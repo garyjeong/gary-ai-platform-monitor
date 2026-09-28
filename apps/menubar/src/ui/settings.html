@@ -7,59 +7,84 @@
       content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>설정 — AI Platform Monitor</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <title>설정</title>
+    <link rel="stylesheet" href="./components.css" />
+    <link rel="stylesheet" href="./shell.css" />
   </head>
-  <body class="settings-page">
-    <header class="top framed">
-      <div>
-        <h1>설정</h1>
-        <p class="sub">대시보드에 표시할 플랫폼 · 앱 옵션</p>
+  <body class="surface-settings">
+    <main class="settings">
+      <h2 class="group-title">일반</h2>
+      <div class="group">
+        <div class="grow">
+          <div class="grow__text"><label class="grow__label" for="set-login">로그인 시 실행</label></div>
+          <input id="set-login" type="checkbox" role="switch" class="switch" />
+        </div>
       </div>
-      <div class="actions">
-        <button type="button" class="icon-btn" id="btn-refresh" title="새로고침" aria-label="새로고침">↻</button>
+      <p class="group-foot">사용량은 플랫폼별로 1–5분, 공식 상태는 1분 간격으로 확인합니다. 호출 제한을 받으면 서버가 요청한 만큼 기다립니다.</p>
+
+      <h2 class="group-title">이 Mac 리소스</h2>
+      <div class="group">
+        <div class="grow">
+          <div class="grow__text"><label class="grow__label" for="set-res-popover">팝오버에 표시</label></div>
+          <input id="set-res-popover" type="checkbox" role="switch" class="switch" />
+        </div>
+        <div class="grow">
+          <div class="grow__text"><label class="grow__label" for="set-res-widget">위젯에 표시</label></div>
+          <input id="set-res-widget" type="checkbox" role="switch" class="switch" />
+        </div>
       </div>
-    </header>
+      <p class="group-foot">CPU · 메모리 · 공유 메모리 · 네트워크. 팝오버나 위젯이 보일 때만 측정합니다(팝오버 2초, 위젯 5초 간격).</p>
 
-    <section class="settings-block">
-      <h2>일반</h2>
-      <label class="row">
-        <span>공식 상태 페이지 확인 주기</span>
-        <select id="health-interval">
-          <option value="30">30초</option>
-          <option value="60" selected>1분</option>
-          <option value="120">2분</option>
-          <option value="300">5분</option>
-        </select>
-      </label>
-      <label class="row toggle-row">
-        <span>로그인 시 실행</span>
-        <input type="checkbox" id="open-at-login" />
-      </label>
-      <label class="row toggle-row">
-        <span>브라우저 쿠키 읽기 (Grok · Cursor 사용량)</span>
-        <input type="checkbox" id="browser-cookies" />
-      </label>
-      <p class="hint">
-        사용량은 플랫폼별로 1–5분 간격으로 조회하고, 호출 제한을 받으면 서버가 요청한 만큼 기다립니다.
-        알림은 보내지 않습니다.
-      </p>
-    </section>
+      <h2 class="group-title">플랫폼</h2>
+      <div class="group" id="platform-rows"><p class="group-empty">불러오는 중…</p></div>
+      <p class="group-foot">켠 플랫폼만 팝오버와 위젯에 나옵니다. 스위치 하나가 사용량과 공식 상태를 함께 켭니다.</p>
 
-    <section class="settings-block">
-      <h2>플랫폼</h2>
-      <p class="hint tight">
-        <strong>표시</strong>를 켠 플랫폼만 대시보드에 나옵니다 (사용량 + 공식 상태 함께).<br />
-        끄면 자동으로 다시 켜지지 않습니다. 언제든 여기서 다시 켤 수 있습니다.
-      </p>
-      <div class="filter-row">
-        <button type="button" id="btn-monitor-detected" class="text-btn">감지된 것만 표시</button>
-        <button type="button" id="btn-monitor-none" class="text-btn">모두 끄기</button>
+      <h2 class="group-title">위젯</h2>
+      <div class="group">
+        <div class="grow">
+          <div class="grow__text"><label class="grow__label" for="set-widget">위젯 표시</label></div>
+          <input id="set-widget" type="checkbox" role="switch" class="switch" />
+        </div>
+        <div class="grow">
+          <div class="grow__text">
+            <span class="grow__label">표시할 플랫폼</span>
+            <p class="grow__desc">최대 3개 · <span id="pin-count"></span></p>
+          </div>
+          <div class="pin-chips" id="pin-chips" role="group" aria-label="위젯에 표시할 플랫폼"></div>
+        </div>
+        <div class="grow grow--nowrap">
+          <div class="grow__text"><label class="grow__label" for="set-opacity">투명도</label></div>
+          <span class="mrange"><span>투명</span><input id="set-opacity" type="range" min="40" max="100" step="5" /><span>불투명</span><output id="opacity-out" for="set-opacity"></output></span>
+        </div>
+        <div class="grow grow--top">
+          <div class="grow__text">
+            <label class="grow__label" for="set-fullscreen">전체 화면 앱 위에 표시</label>
+            <p class="grow__desc">끄면 전체 화면으로 쓰는 앱 위에서는 위젯이 보이지 않습니다.</p>
+          </div>
+          <input id="set-fullscreen" type="checkbox" role="switch" class="switch" />
+        </div>
       </div>
-      <div id="provider-settings" class="provider-settings"></div>
-    </section>
 
-    <p class="hint" id="settings-error" role="alert" hidden></p>
-    <script src="./settings.js" type="module"></script>
+      <h2 class="group-title">개인정보</h2>
+      <div class="group">
+        <div class="grow grow--top">
+          <div class="grow__text">
+            <label class="grow__label" for="set-cookies">브라우저 쿠키 읽기</label>
+            <p class="grow__desc">Grok 사용률(%)과 Cursor 사용량은 웹 계정에서만 볼 수 있습니다. 켜면 Chrome·Brave·Arc 에 저장된 grok.com · cursor.com 로그인 쿠키만 읽어 이 Mac 에서 사용량을 조회합니다. 처음 켤 때 macOS 가 키체인 접근을 물을 수 있습니다.</p>
+          </div>
+          <input id="set-cookies" type="checkbox" role="switch" class="switch" />
+        </div>
+        <div class="grow grow--top">
+          <div class="grow__text">
+            <label class="grow__label" for="set-share">화면 공유 시 위젯 숨기기</label>
+            <p class="grow__desc">화면 녹화·공유에서 위젯을 빼 달라고 macOS 에 요청합니다. macOS 버전과 공유 앱에 따라 그대로 캡처될 수 있습니다.</p>
+          </div>
+          <input id="set-share" type="checkbox" role="switch" class="switch" />
+        </div>
+      </div>
+      <p class="settings-error" id="settings-error" role="alert" hidden></p>
+    </main>
+    <script src="./components.js"></script>
+    <script src="./settings.js"></script>
   </body>
 </html>

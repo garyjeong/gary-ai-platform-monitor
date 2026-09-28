@@ -10,6 +10,9 @@ Automatically discovers local logins, shows usage as **percent** when available,
 |---------|-------------|
 | **Auto-discover** | 15 providers: Claude, Codex, Grok, Gemini, OpenRouter, Cursor, Copilot, Ollama, OpenCode, ChatGPT Desktop, Warp, Factory, Amp, Kiro, Kilo |
 | **Monitor toggles** | Enable/disable each platform in Settings |
+| **Floating widget** | One compact always-on-top panel: up to 3 platforms + this Mac's resources, snaps to screen edges, remembers its place |
+| **This Mac** | CPU, memory (pressure, swap), shared memory, network throughput — sampled only while the popover/widget is visible |
+| **Pace & freshness** | Even-pace marker, “runs out before reset” warning from the recent rate, per-platform “n분 전 확인” |
 | **Usage %** | Claude · Codex · Gemini · OpenRouter; Grok via browser cookie when available |
 | **Health** | Statuspage + xAI RSS (default **60s**, 30–300s) — badge only |
 | **Open at login** | Electron login item or LaunchAgent scripts |
@@ -31,7 +34,8 @@ npm install
 npm run app   # builds, downloads the Electron binary on first run, starts the app
 ```
 
-The Dock icon is hidden; click the menu bar icon to open the panel (right-click for Settings / Quit).
+The Dock icon is hidden; click the menu bar icon to open the panel (right-click for Settings / widget / Quit).
+If the menu bar icon is hidden behind the notch, launch the app again (Spotlight) to open the panel.
 
 ### CLI
 

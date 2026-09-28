@@ -1,5 +1,5 @@
 /**
- * Electron main — tray (icon only) + status popover + separate Settings.
+ * Electron main — tray (icon only) + status popover + Settings + floating widget.
  *
  * - All fetching runs in a utility process (collector-host.ts). Main never blocks on
  *   Keychain / file / network work and restarts the collector if it dies.
@@ -13,10 +13,12 @@ import {
   ipcMain,
   Menu,
   nativeImage,
+  nativeTheme,
   powerMonitor,
   screen,
   session,
   shell,
+  systemPreferences,
   Tray,
   utilityProcess,
   type IpcMainInvokeEvent,
@@ -27,16 +29,19 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
-  HEALTH_INTERVAL_MAX,
-  HEALTH_INTERVAL_MIN,
   loadConfigWithStatus,
+  normalizeWidget,
   setProviderMonitor,
   updateConfig,
+  WIDGET_MAX_PINNED,
   type AppConfig,
   type FullSnapshot,
   type ProviderPreference,
+  type WidgetConfig,
 } from '@gary-ai-platform-monitor/core';
+import type { SystemResources } from '@gary-ai-platform-monitor/system';
 import type { FromCollector, RefreshRequest, ToCollector } from './collector-protocol.js';
+import { WidgetWindow } from './widget-window.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UI_DIR = path.join(__dirname, 'ui');
@@ -46,12 +51,21 @@ const UI_URL_PREFIX = pathToFileURL(UI_DIR).href + '/';
 const OPEN_REFRESH_STALE_MS = 60_000;
 const REFRESH_WAIT_MS = 30_000;
 
+const POPOVER_WIDTH = 360;
+const POPOVER_MAX_HEIGHT = 560;
+/** Resource sampling cadence per visible surface (nothing is sampled while hidden). */
+const RESOURCES_POPOVER_MS = 2_000;
+const RESOURCES_WIDGET_MS = 5_000;
+
 let tray: Tray | null = null;
 let statusWin: BrowserWindow | null = null;
 let settingsWin: BrowserWindow | null = null;
+let widget: WidgetWindow | null = null;
 
 let config: AppConfig;
 let latest: FullSnapshot | null = null;
+let latestResources: SystemResources | null = null;
+let resourceDemandMs = -1;
 let firstSnapshotWaiters: Array<(snap: FullSnapshot | null) => void> = [];
 
 let collector: UtilityProcess | null = null;
@@ -123,6 +137,8 @@ function startCollector(): void {
 
   child.on('spawn', () => {
     send({ type: 'init', config });
+    resourceDemandMs = -1;
+    updateResourceDemand();
   });
 
   child.on('message', (msg: FromCollector) => {
@@ -138,6 +154,12 @@ function startCollector(): void {
         break;
       case 'config-proposal':
         applySeed(msg.patch);
+        break;
+      case 'resources':
+        latestResources = msg.resources;
+        for (const w of [statusWin, widget?.window ?? null]) {
+          if (w && !w.isDestroyed() && w.isVisible()) w.webContents.send('resources', msg.resources);
+        }
         break;
       case 'log':
         console.error('[gai-pm collector]', msg.message);
@@ -204,7 +226,27 @@ function writeConfig(mutate: (cfg: AppConfig) => AppConfig): AppConfig {
     config = mutate(config);
   }
   send({ type: 'config', config });
+  widget?.sync();
+  updateResourceDemand();
   return config;
+}
+
+/** Ask the collector to sample only as often as the visible surfaces need. */
+function updateResourceDemand(): void {
+  let ms = 0;
+  if (config.resources.showInPopover && statusWin && !statusWin.isDestroyed() && statusWin.isVisible()) {
+    ms = RESOURCES_POPOVER_MS;
+  } else if (config.resources.showInWidget && widget?.window?.isVisible()) {
+    ms = RESOURCES_WIDGET_MS;
+  }
+  if (ms === resourceDemandMs) return;
+  resourceDemandMs = ms;
+  send({ type: 'resources-demand', intervalMs: ms });
+}
+
+/** Latest data with the config main just wrote (the collector's copy follows shortly). */
+function snapshotWithConfig(): FullSnapshot | null {
+  return latest ? { ...latest, config } : null;
 }
 
 function applySeed(patch: Record<string, ProviderPreference>): void {
@@ -250,38 +292,49 @@ function sharedWebPrefs(): Electron.WebPreferences {
 
 function createStatusWindow(): BrowserWindow {
   const w = new BrowserWindow({
-    width: 420,
-    height: 580,
+    width: POPOVER_WIDTH,
+    height: 420,
     show: false,
     frame: false,
-    resizable: true,
+    resizable: false,
     minimizable: false,
     maximizable: false,
     fullscreenable: false,
     skipTaskbar: true,
     alwaysOnTop: true,
-    backgroundColor: '#1a1b1e',
+    roundedCorners: true,
+    vibrancy: 'popover',
+    visualEffectState: 'active',
+    backgroundColor: '#00000000',
     webPreferences: sharedWebPrefs(),
   });
   w.loadFile(path.join(UI_DIR, 'index.html'));
   w.on('blur', () => {
     if (!w.webContents.isDevToolsOpened()) w.hide();
   });
+  w.on('show', updateResourceDemand);
+  w.on('hide', updateResourceDemand);
   return w;
+}
+
+function windowBackground(): string {
+  return nativeTheme.shouldUseDarkColors ? '#1f1f23' : '#ececf0';
 }
 
 function createSettingsWindow(): BrowserWindow {
   const w = new BrowserWindow({
-    width: 520,
-    height: 680,
+    width: 600,
+    height: 760,
+    minWidth: 480,
+    minHeight: 420,
     show: false,
     frame: true,
-    title: 'AI Platform Monitor — 설정',
+    title: 'AI Platform Monitor 설정',
     resizable: true,
     minimizable: true,
     maximizable: false,
     fullscreenable: false,
-    backgroundColor: '#1a1b1e',
+    backgroundColor: windowBackground(),
     webPreferences: sharedWebPrefs(),
   });
   w.loadFile(path.join(UI_DIR, 'settings.html'));
@@ -335,7 +388,7 @@ function updateTrayChrome(snap: FullSnapshot): void {
 
 /** Only visible windows get live pushes; a window gets `latest` when shown. */
 function broadcast(snap: FullSnapshot): void {
-  for (const w of [statusWin, settingsWin]) {
+  for (const w of [statusWin, settingsWin, widget?.window ?? null]) {
     if (w && !w.isDestroyed() && w.isVisible()) w.webContents.send('snapshot', snap);
   }
 }
@@ -350,6 +403,7 @@ function toggleStatusWindow(): void {
   statusWin.show();
   statusWin.focus();
   if (latest) statusWin.webContents.send('snapshot', latest);
+  if (latestResources) statusWin.webContents.send('resources', latestResources);
   void requestRefresh({ staleAfterMs: OPEN_REFRESH_STALE_MS });
 }
 
@@ -384,22 +438,76 @@ function setupIpc(): void {
     return requestRefresh({ staleAfterMs: OPEN_REFRESH_STALE_MS });
   });
 
-  handle('set-health-interval', async (_e, seconds: unknown) => {
-    const n = Number(seconds);
-    if (!Number.isFinite(n) || n < HEALTH_INTERVAL_MIN || n > HEALTH_INTERVAL_MAX) return latest;
-    writeConfig((cfg) => ({ ...cfg, health: { ...cfg.health, intervalSeconds: Math.round(n) } }));
-    return waitForSnapshot();
-  });
-
   handle('set-open-at-login', async (_e, open: unknown) => {
     const actual = applyOpenAtLogin(Boolean(open));
     writeConfig((cfg) => ({ ...cfg, openAtLogin: actual }));
-    return waitForSnapshot();
+    return snapshotWithConfig();
   });
 
   handle('set-browser-cookies', async (_e, on: unknown) => {
     writeConfig((cfg) => ({ ...cfg, scan: { ...cfg.scan, includeBrowserCookies: Boolean(on) } }));
-    return waitForSnapshot();
+    return snapshotWithConfig();
+  });
+
+  handle('set-widget', async (_e, patch: unknown) => {
+    const next = validateWidgetPatch(patch);
+    writeConfig((cfg) => ({ ...cfg, widget: normalizeWidget({ ...cfg.widget, ...next }) }));
+    return snapshotWithConfig();
+  });
+
+  handle('resize-to-content', (event, height: unknown, width: unknown) => {
+    const h = Number(height);
+    if (!Number.isFinite(h)) return;
+    const w = BrowserWindow.fromWebContents(event.sender);
+    if (w && w === widget?.window) {
+      widget.resizeTo(Number(width) || 200, h);
+    } else if (w && w === statusWin) {
+      const target = Math.round(Math.min(POPOVER_MAX_HEIGHT, Math.max(140, h)));
+      const [, cur] = w.getContentSize();
+      if (cur !== target) w.setContentSize(POPOVER_WIDTH, target);
+    }
+  });
+
+  handle('show-more-menu', (event) => {
+    const w = BrowserWindow.fromWebContents(event.sender);
+    Menu.buildFromTemplate([
+      { label: '새로고침', accelerator: 'Command+R', click: () => void requestRefresh({}) },
+      { type: 'separator' },
+      { label: '종료', accelerator: 'Command+Q', click: () => app.quit() },
+    ]).popup(w ? { window: w } : {});
+  });
+
+  handle('get-appearance', () => appearance());
+
+  handle('widget-drag', (event, phase: unknown, x: unknown, y: unknown) => {
+    if (!widget || BrowserWindow.fromWebContents(event.sender) !== widget.window) return;
+    const sx = Number(x);
+    const sy = Number(y);
+    if (phase === 'start' && Number.isFinite(sx) && Number.isFinite(sy)) widget.dragStart(sx, sy);
+    else if (phase === 'move' && Number.isFinite(sx) && Number.isFinite(sy)) widget.dragMove(sx, sy);
+    else if (phase === 'end' || phase === 'cancel') widget.dragEnd(phase === 'end');
+  });
+
+  handle('show-widget-menu', (event) => {
+    const w = BrowserWindow.fromWebContents(event.sender);
+    Menu.buildFromTemplate([
+      { label: '설정…', accelerator: 'Command+,', click: () => openSettingsWindow() },
+      { label: '새로고침', accelerator: 'Command+R', click: () => void requestRefresh({}) },
+    ]).popup(w ? { window: w } : {});
+  });
+
+  handle('get-resources', () => latestResources);
+
+  handle('set-resources', async (_e, patch: unknown) => {
+    const p = (patch && typeof patch === 'object' ? patch : {}) as Record<string, unknown>;
+    writeConfig((cfg) => ({
+      ...cfg,
+      resources: {
+        showInPopover: typeof p.showInPopover === 'boolean' ? p.showInPopover : cfg.resources.showInPopover,
+        showInWidget: typeof p.showInWidget === 'boolean' ? p.showInWidget : cfg.resources.showInWidget,
+      },
+    }));
+    return snapshotWithConfig();
   });
 
   handle('get-open-at-login', () => readOpenAtLogin());
@@ -407,7 +515,9 @@ function setupIpc(): void {
   handle('open-settings', () => openSettingsWindow());
 
   handle('hide-window', (event) => {
-    BrowserWindow.fromWebContents(event.sender)?.hide();
+    const w = BrowserWindow.fromWebContents(event.sender);
+    if (w && w === settingsWin) w.close();
+    else w?.hide();
   });
 
   handle('quit', () => app.quit());
@@ -422,6 +532,59 @@ function setupIpc(): void {
     if (url.protocol !== 'https:' || !allowedExternalHosts().has(url.host)) return;
     await shell.openExternal(url.toString());
   });
+}
+
+/**
+ * The menu bar is hidden (LSUIElement), but its key equivalents still work whenever one of
+ * our windows is active: ⌘, settings, ⌘R refresh, ⌘W close, ⌘Q quit.
+ */
+function setupAppMenu(): void {
+  Menu.setApplicationMenu(
+    Menu.buildFromTemplate([
+      {
+        label: 'AI Platform Monitor',
+        submenu: [
+          { label: '설정…', accelerator: 'Command+,', click: () => openSettingsWindow() },
+          { label: '새로고침', accelerator: 'Command+R', click: () => void requestRefresh({}) },
+          { type: 'separator' },
+          { label: '종료', accelerator: 'Command+Q', click: () => app.quit() },
+        ],
+      },
+      { label: '편집', submenu: [{ role: 'copy' }, { role: 'selectAll' }] },
+      { label: '윈도우', submenu: [{ role: 'close' }] },
+    ])
+  );
+}
+
+/** Only known keys with the right types reach the config. */
+function validateWidgetPatch(raw: unknown): Partial<WidgetConfig> {
+  const p = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const out: Partial<WidgetConfig> = {};
+  for (const key of ['visible', 'overFullScreen', 'hideInScreenShare'] as const) {
+    if (typeof p[key] === 'boolean') out[key] = p[key];
+  }
+  if (typeof p.opacity === 'number' && Number.isFinite(p.opacity)) out.opacity = p.opacity;
+  if (Array.isArray(p.pinned)) {
+    const known = knownProviderIds();
+    out.pinned = p.pinned.filter((id): id is string => typeof id === 'string' && known.has(id)).slice(0, WIDGET_MAX_PINNED);
+  }
+  return out;
+}
+
+function appearance(): { accent?: string } {
+  try {
+    const rgba = systemPreferences.getAccentColor();
+    return /^[0-9a-f]{6,8}$/i.test(rgba) ? { accent: `#${rgba.slice(0, 6)}` } : {};
+  } catch {
+    return {};
+  }
+}
+
+function broadcastAppearance(): void {
+  const a = appearance();
+  for (const w of [statusWin, settingsWin, widget?.window ?? null]) {
+    if (w && !w.isDestroyed()) w.webContents.send('appearance', a);
+  }
 }
 
 // ── login item (macOS 13+ SMAppService via Electron 44) ──────────────
@@ -535,10 +698,16 @@ async function onReady(): Promise<void> {
   tray.setToolTip('AI Platform Monitor');
   tray.on('click', () => toggleStatusWindow());
   tray.on('right-click', () => {
+    const wc = config.widget;
     const menu = Menu.buildFromTemplate([
       { label: '상태 보기', click: () => toggleStatusWindow() },
       { label: '설정…', click: () => openSettingsWindow() },
       { label: '새로고침', click: () => void requestRefresh({}) },
+      { type: 'separator' },
+      {
+        label: wc.visible ? '위젯 숨기기' : '위젯 보기',
+        click: () => writeConfig((cfg) => ({ ...cfg, widget: { ...cfg.widget, visible: !cfg.widget.visible } })),
+      },
       { type: 'separator' },
       { label: 'AI Platform Monitor 종료', click: () => app.quit() },
     ]);
@@ -546,12 +715,36 @@ async function onReady(): Promise<void> {
   });
 
   setupIpc();
+  setupAppMenu();
   startCollector();
 
   powerMonitor.on('suspend', () => send({ type: 'pause' }));
   powerMonitor.on('lock-screen', () => send({ type: 'pause' }));
-  powerMonitor.on('resume', () => send({ type: 'resume' }));
+  powerMonitor.on('resume', () => {
+    send({ type: 'resume' });
+    widget?.ensureOnScreen();
+    resourceDemandMs = -1;
+    updateResourceDemand();
+  });
   powerMonitor.on('unlock-screen', () => send({ type: 'resume' }));
 
+  systemPreferences.subscribeNotification('AppleColorPreferencesChangedNotification', broadcastAppearance);
+  nativeTheme.on('updated', () => {
+    if (settingsWin && !settingsWin.isDestroyed()) settingsWin.setBackgroundColor(windowBackground());
+  });
+
   statusWin = createStatusWindow();
+
+  widget = new WidgetWindow({
+    getConfig: () => config,
+    savePosition: (position) => writeConfig((cfg) => ({ ...cfg, widget: { ...cfg.widget, position } })),
+    webPreferences: sharedWebPrefs,
+    htmlPath: path.join(UI_DIR, 'widget.html'),
+    onVisibilityChange: () => {
+      updateResourceDemand();
+      const w = widget?.window;
+      if (w && latestResources) w.webContents.send('resources', latestResources);
+    },
+  });
+  widget.sync();
 }

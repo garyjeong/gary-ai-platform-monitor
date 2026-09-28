@@ -1,6 +1,6 @@
 {
   "name": "@gary-ai-platform-monitor/menubar",
-  "version": "0.4.0",
+  "version": "0.6.0",
   "private": true,
   "description": "macOS menu bar app for AI platform usage + health",
   "author": "garyjeong",
@@ -12,11 +12,13 @@
     "start": "npm run build && electron .",
     "dev": "npm run build && electron .",
     "pack": "npm run build && electron-builder --mac dir",
-    "dist": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg"
+    "dist": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg",
+    "test": "node --test src/ui/components.test.mjs"
   },
   "dependencies": {
     "@gary-ai-platform-monitor/core": "0.1.0",
-    "@gary-ai-platform-monitor/runtime": "0.3.1"
+    "@gary-ai-platform-monitor/runtime": "0.3.1",
+    "@gary-ai-platform-monitor/system": "0.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",

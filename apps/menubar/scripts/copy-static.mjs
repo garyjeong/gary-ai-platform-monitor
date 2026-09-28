@@ -5,7 +5,10 @@ import { fileURLToPath } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dest = join(root, 'dist', 'ui');
 mkdirSync(dest, { recursive: true });
-cpSync(join(root, 'src', 'ui'), dest, { recursive: true });
+cpSync(join(root, 'src', 'ui'), dest, {
+  recursive: true,
+  filter: (src) => !src.endsWith('.test.mjs'),
+});
 
 // Icons for tray + packaging
 const iconsDest = join(root, 'dist', 'icons');

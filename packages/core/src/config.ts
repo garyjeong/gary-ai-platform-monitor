@@ -1,7 +1,13 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { DEFAULT_CONFIG, type AppConfig, type ProviderPreference } from './types.js';
+import {
+  DEFAULT_CONFIG,
+  WIDGET_MAX_PINNED,
+  type AppConfig,
+  type ProviderPreference,
+  type WidgetConfig,
+} from './types.js';
 
 /** Status-page poll bounds (seconds). Usage has its own per-provider TTL. */
 export const HEALTH_INTERVAL_MIN = 30;
@@ -179,6 +185,32 @@ export function normalizeConfig(config: AppConfig): AppConfig {
     defaults: {
       autoEnableOnFirstConnect: config.defaults?.autoEnableOnFirstConnect !== false,
     },
+    widget: normalizeWidget(config.widget),
+    resources: {
+      showInPopover: config.resources?.showInPopover !== false,
+      showInWidget: config.resources?.showInWidget !== false,
+    },
+  };
+}
+
+export function normalizeWidget(raw?: Partial<WidgetConfig> | null): WidgetConfig {
+  const d = DEFAULT_CONFIG.widget;
+  const pinned = Array.isArray(raw?.pinned)
+    ? [...new Set(raw.pinned.filter((id): id is string => typeof id === 'string'))].slice(0, WIDGET_MAX_PINNED)
+    : [];
+  const opacity = typeof raw?.opacity === 'number' && Number.isFinite(raw.opacity) ? raw.opacity : d.opacity;
+  const pos = raw?.position;
+  const position =
+    pos && [pos.displayId, pos.x, pos.y].every((n) => typeof n === 'number' && Number.isFinite(n))
+      ? { displayId: pos.displayId, x: Math.round(pos.x), y: Math.round(pos.y) }
+      : undefined;
+  return {
+    visible: typeof raw?.visible === 'boolean' ? raw.visible : d.visible,
+    pinned,
+    opacity: Math.round(Math.min(100, Math.max(40, opacity))),
+    overFullScreen: Boolean(raw?.overFullScreen),
+    hideInScreenShare: Boolean(raw?.hideInScreenShare),
+    ...(position ? { position } : {}),
   };
 }
 
@@ -199,6 +231,8 @@ export function mergeConfig(base: AppConfig, raw: Partial<AppConfig>): AppConfig
       typeof raw.openAtLogin === 'boolean' ? raw.openAtLogin : base.openAtLogin,
     providers,
     defaults: { ...base.defaults, ...raw.defaults },
+    widget: { ...base.widget, ...raw.widget },
+    resources: { ...base.resources, ...raw.resources },
   });
 }
 

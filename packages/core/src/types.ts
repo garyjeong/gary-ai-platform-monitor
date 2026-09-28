@@ -58,6 +58,11 @@ export interface UsageWindow {
   windowSeconds?: number;
   /** Default 'fixed' when resetsAt is set. */
   windowKind?: UsageWindowKind;
+  /**
+   * Percentage points per hour over the recent past (≥15 min of samples in the same window).
+   * Filled by the collector from its own observations; adapters leave it unset.
+   */
+  recentRatePerHour?: number;
   label?: string;
   source: UsageSource;
   /** Optional absolute units when % is unavailable */
@@ -169,6 +174,28 @@ export interface ProviderPreference {
   userHidden: boolean;
 }
 
+export interface WidgetPosition {
+  /** Electron display id the widget was last placed on. */
+  displayId: number;
+  /** Top-left corner in screen DIP coordinates. */
+  x: number;
+  y: number;
+}
+
+/** Floating desktop widget (Electron panel window). */
+export interface WidgetConfig {
+  visible: boolean;
+  /** Up to 3 provider ids shown in the widget. Empty = first monitored providers. */
+  pinned: string[];
+  /** Window opacity in percent (40–100). */
+  opacity: number;
+  /** Also float above other apps' full-screen spaces. */
+  overFullScreen: boolean;
+  /** Ask macOS to exclude the widget from screen capture (not honored by every capturer). */
+  hideInScreenShare: boolean;
+  position?: WidgetPosition;
+}
+
 export interface AppConfig {
   scan: {
     /** Local login re-detection interval. */
@@ -188,7 +215,15 @@ export interface AppConfig {
   defaults: {
     autoEnableOnFirstConnect: boolean;
   };
+  widget: WidgetConfig;
+  /** This Mac's CPU / memory / shared memory / network. Sampled only while shown. */
+  resources: {
+    showInPopover: boolean;
+    showInWidget: boolean;
+  };
 }
+
+export const WIDGET_MAX_PINNED = 3;
 
 export const DEFAULT_CONFIG: AppConfig = {
   scan: {
@@ -204,6 +239,17 @@ export const DEFAULT_CONFIG: AppConfig = {
   providers: {},
   defaults: {
     autoEnableOnFirstConnect: true,
+  },
+  widget: {
+    visible: false,
+    pinned: [],
+    opacity: 90,
+    overFullScreen: false,
+    hideInScreenShare: false,
+  },
+  resources: {
+    showInPopover: true,
+    showInWidget: true,
   },
 };
 

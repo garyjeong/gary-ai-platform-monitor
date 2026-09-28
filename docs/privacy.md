@@ -19,6 +19,8 @@
 | Browser cookie DB (Chrome, Brave, Arc, Chromium) | Grok / Cursor usage | **Off by default** (Settings → 브라우저 쿠키 읽기). Reads the browser's "Safe Storage" key from the Keychain (macOS asks for permission), copies the cookie DB to a private temp dir, decrypts only the named cookies for the vendor domain, then deletes the copy |
 | OpenCode `opencode.db` | Session/message counts | Copied to a temp dir, counted, deleted |
 
+System resources are read with local commands only (`vm_stat`, `sysctl`, `top -l 1`, `netstat -ibn`) and never leave the Mac.
+
 All fetching runs in a separate helper process of the app. Error messages are scrubbed of tokens before they
 reach the UI.
 

@@ -125,6 +125,52 @@ describe('Collector usage stream', () => {
   });
 });
 
+describe('Collector recent rate', () => {
+  it('attaches %p/hour after 15 minutes of samples in the same window', async () => {
+    let t = 10_000_000;
+    let pct = 20;
+    const resetsAt = Math.floor(t / 1000) + 3 * 3600;
+    const a = adapter('p', async () => ({
+      providerId: 'p',
+      status: 'ok',
+      updatedAt: t,
+      observedAt: t,
+      windows: [{ id: '5h', usedPercent: pct, resetsAt, windowSeconds: 18000, source: 'oauth' }],
+    }));
+    const c = new Collector({ adapters: [a], config: monitored(['p']), now: () => t });
+    await c.refreshNow({ detect: true });
+    t += 10 * 60_000;
+    pct = 25;
+    let snap = await c.refreshNow();
+    assert.equal(snap.providers[0]?.usage?.windows[0]?.recentRatePerHour, undefined);
+    t += 10 * 60_000;
+    pct = 30;
+    snap = await c.refreshNow();
+    // 10 %p over 20 min = 30 %p/h
+    assert.equal(snap.providers[0]?.usage?.windows[0]?.recentRatePerHour, 30);
+  });
+
+  it('restarts history when the window resets', async () => {
+    let t = 0;
+    let pct = 80;
+    let resetsAt = 18000;
+    const a = adapter('p', async () => ({
+      providerId: 'p',
+      status: 'ok',
+      updatedAt: t,
+      observedAt: t,
+      windows: [{ id: '5h', usedPercent: pct, resetsAt, source: 'oauth' }],
+    }));
+    const c = new Collector({ adapters: [a], config: monitored(['p']), now: () => t });
+    await c.refreshNow({ detect: true });
+    t += 20 * 60_000;
+    pct = 2;
+    resetsAt += 18000;
+    const snap = await c.refreshNow();
+    assert.equal(snap.providers[0]?.usage?.windows[0]?.recentRatePerHour, undefined);
+  });
+});
+
 describe('Collector detection seeding', () => {
   it('seeds only found providers, so a later login still auto-enables', async () => {
     let found = false;

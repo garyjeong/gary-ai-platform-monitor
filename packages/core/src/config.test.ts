@@ -104,3 +104,22 @@ describe('setProviderMonitor batch semantics', () => {
     assert.equal(cfg.providers.cursor?.userHidden, true);
   });
 });
+
+describe('widget + resources config', () => {
+  it('drops removed widget options and keeps valid ones', () => {
+    const merged = mergeConfig(DEFAULT_CONFIG, {
+      widget: { visible: true, pinned: ['a', 'b', 'c', 'd'], opacity: 10, size: 'medium', clickThrough: true } as never,
+    });
+    assert.equal(merged.widget.visible, true);
+    assert.deepEqual(merged.widget.pinned, ['a', 'b', 'c']);
+    assert.equal(merged.widget.opacity, 40);
+    assert.equal('size' in merged.widget, false);
+    assert.equal('clickThrough' in merged.widget, false);
+  });
+
+  it('resources default to shown', () => {
+    const merged = mergeConfig(DEFAULT_CONFIG, {});
+    assert.deepEqual(merged.resources, { showInPopover: true, showInWidget: true });
+    assert.equal(mergeConfig(DEFAULT_CONFIG, { resources: { showInPopover: false, showInWidget: true } }).resources.showInPopover, false);
+  });
+});

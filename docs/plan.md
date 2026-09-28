@@ -1,6 +1,6 @@
 # gary-ai-platform-monitor — Product Plan
 
-Status: **v0.4 reliability pass** (collector process · per-provider TTL/backoff · Electron 44) — design refresh and floating widget next
+Status: **v0.6** — reliability pass (v0.4) + design refresh + floating widget (v0.5) + this Mac resources
 
 ## Vision
 
@@ -64,8 +64,8 @@ packages/adapters/*   → 15 providers (claude, codex, grok, gemini, …)
 - [x] Extra adapters: Gemini, OpenRouter, Cursor, Copilot, Ollama, OpenCode, ChatGPT Desktop, Warp, Factory, Amp, Kiro, Kilo
 - [x] DMG packaging scripts + GitHub Release workflow + Homebrew cask template
 - [x] v0.4: collector utility process, per-provider TTL + backoff + Retry-After, last-good retention, atomic config, single instance, sandboxed renderer, Electron 44
-- [ ] v0.5: design refresh (shared components, light/dark, pace, freshness)
-- [ ] v0.6: floating widget (Electron panel window)
+- [x] v0.5: design refresh (shared components, light/dark, pace, freshness) and floating widget (Electron panel window)
+- [x] v0.6: this Mac resources (CPU, memory, shared memory, network) in popover and widget; single-size widget
 - [ ] Notarization (requires user's Apple Developer cert — documented)
 
 ## Commands

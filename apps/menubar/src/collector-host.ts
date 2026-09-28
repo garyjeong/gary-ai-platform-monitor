@@ -6,10 +6,14 @@
 
 import type { Collector } from '@gary-ai-platform-monitor/core';
 import { createAppCollector } from '@gary-ai-platform-monitor/runtime';
+import { ResourceSampler } from '@gary-ai-platform-monitor/system';
 import type { FromCollector, ToCollector } from './collector-protocol.js';
 
 const port = process.parentPort;
 let collector: Collector | null = null;
+const sampler = new ResourceSampler({
+  onSample: (resources) => post({ type: 'resources', resources }),
+});
 
 function post(msg: FromCollector): void {
   port.postMessage(msg);
@@ -44,9 +48,13 @@ port.on('message', (event) => {
     }
     case 'pause':
       collector?.pause();
+      sampler.setInterval(0);
       break;
     case 'resume':
       collector?.resume();
+      break;
+    case 'resources-demand':
+      sampler.setInterval(msg.intervalMs);
       break;
   }
 });
@@ -61,6 +69,7 @@ const parentPid = process.ppid;
 setInterval(() => {
   if (process.ppid !== parentPid || process.ppid === 1) {
     collector?.stop();
+    sampler.setInterval(0);
     process.exit(0);
   }
 }, 5_000).unref();

@@ -1,0 +1,114 @@
+/* Window shells for the popover, settings and floating widget. Tokens/components: components.css */
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+.sprite{position:absolute;width:0;height:0;overflow:hidden}
+html,body{margin:0;height:100%}
+body{font:var(--fs-body)/1.35 var(--font);color:var(--label);-webkit-font-smoothing:antialiased;user-select:none;cursor:default}
+code{font:10.5px var(--font-mono);padding:0 3px;border-radius:3px;background:var(--control-bg)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.provider-block__plan{font-size:var(--fs-caption);color:var(--label-3);white-space:nowrap}
+
+/* Native vibrancy supplies the material in the app; the mockup's CSS tint is not needed. */
+.surface-popover,.surface-widget{background:transparent}
+.surface-popover .material,.surface-widget .material{background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none}
+@media (prefers-reduced-transparency: reduce){
+  .surface-popover,.surface-widget{background:var(--material-solid)}
+}
+
+/* ── popover ─────────────────────────────────────────── */
+.surface-popover .popover{width:100%;max-height:100vh;height:100vh;border-radius:0;box-shadow:none}
+.surface-popover .popover-list{scrollbar-width:thin}
+.popover-footer .pbtn:focus-visible{outline-offset:0}
+
+/* ── settings window ─────────────────────────────────── */
+.surface-settings{background:var(--window-bg);overflow-y:auto;user-select:text}
+.settings{max-width:600px;margin-inline:auto;padding:4px 20px 28px}
+.group-title{margin:16px 0 6px 2px;font-size:13px;font-weight:700}
+.group{border-radius:var(--r-group);background:var(--group-bg);box-shadow:0 0 0 .5px var(--separator)}
+.group-foot{margin:6px 2px 0;font-size:var(--fs-caption);line-height:1.45;color:var(--label-2)}
+.grow{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;min-height:40px;padding:8px 12px}
+.grow + .grow::before{content:"";position:absolute;top:0;left:12px;right:12px;border-top:.5px solid var(--separator)}
+.grow--top{align-items:flex-start}
+.grow--top .switch{margin-top:1px}
+.grow--nowrap{flex-wrap:nowrap}
+.grow--nowrap .grow__text{flex-basis:auto}
+.grow__text{flex:1 1 220px;min-width:0;display:grid;gap:2px}
+.grow__label{font-size:13px}
+.grow__desc{margin:0;font-size:var(--fs-caption);line-height:1.45;color:var(--label-2)}
+.grow.is-off .grow__label{color:var(--label-2)}
+.mpopup{position:relative;display:inline-flex;align-items:center}
+.mpopup select{appearance:none;-webkit-appearance:none;padding:4px 26px 4px 10px;border:0;border-radius:var(--r-control);font:13px var(--font);color:var(--label);background:var(--control-on);box-shadow:0 0 0 .5px var(--separator),0 1px 1.5px rgba(0,0,0,.08);cursor:pointer}
+.mpopup .ic{position:absolute;right:7px;font-size:12px;color:var(--label-2);pointer-events:none}
+.mseg{display:inline-flex;padding:2px;border-radius:7px;background:var(--control-bg)}
+.mseg input{position:absolute;opacity:0;pointer-events:none}
+.mseg label{padding:3px 14px;border-radius:5px;font-size:12px;color:var(--label-2);cursor:pointer}
+.mseg input:checked + label{color:var(--label);background:var(--control-on);box-shadow:0 0 0 .5px var(--separator),0 1px 2px rgba(0,0,0,.1)}
+.mseg input:focus-visible + label{outline:2px solid var(--accent);outline-offset:1px}
+.pin-chips{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px}
+.pin-chip{appearance:none;border:0;display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 10px;border-radius:12px;font:12px var(--font);color:var(--label-2);background:var(--control-bg);cursor:pointer}
+.pin-chip .ic{font-size:11px}
+.pin-chip[aria-pressed="true"]{color:#fff;background:var(--accent)}
+.pin-chip:disabled{opacity:.45;cursor:not-allowed}
+.mrange{display:inline-flex;align-items:center;gap:8px;font-size:var(--fs-caption);color:var(--label-2)}
+.mrange input{width:130px;margin:0;accent-color:var(--accent)}
+.mrange output{min-width:62px;text-align:right;color:var(--label);font-variant-numeric:tabular-nums}
+.group-empty{margin:0;padding:12px;font-size:var(--fs-caption);color:var(--label-2)}
+.settings-error{margin:12px 2px 0;font-size:var(--fs-caption);color:var(--danger-ink)}
+
+/* ── floating widget ─────────────────────────────────── */
+.surface-widget{overflow:hidden}
+.surface-widget .widget{display:inline-block;border-radius:0;box-shadow:none;opacity:1;min-width:150px}
+.surface-widget .widget{cursor:grab;touch-action:none}
+.surface-widget .widget.is-dragging{cursor:grabbing}
+.surface-widget .widget-compact{padding:10px 12px}
+
+/* ── this Mac (resources): chart tiles ───────────────── */
+/* Usage-level chart colors: <50% blue · 50–80% green · 80–90% amber · ≥90% magenta.
+   Validated (dataviz script, adjacent pairs) on #ececf0 light / #26262a dark. Light green/amber are
+   below 3:1 against the surface, so the level is always labeled (legend, tooltip, value text). */
+:root{--lv-normal:#2a78d6;--lv-mid:#1baf7a;--lv-warn:#d97300;--lv-danger:#c8207a;--chart-grid:rgba(0,0,0,.09)}
+@media (prefers-color-scheme: dark){:root{--lv-normal:#3987e5;--lv-mid:#199e70;--lv-warn:#c98500;--lv-danger:#d55181;--chart-grid:rgba(255,255,255,.09)}}
+.res-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding-top:2px}
+.res-tile{min-width:0;display:grid;gap:1px;padding:7px 8px 6px;border-radius:8px;background:var(--control-bg)}
+.res-tile__head{display:flex;align-items:baseline;justify-content:space-between;gap:6px}
+.res-tile__label{font-size:var(--fs-caption);color:var(--label-2);white-space:nowrap}
+.res-tile__value{display:inline-flex;align-items:center;gap:2px;font-size:var(--fs-value);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.res-tile__value .ic{font-size:10px}
+.res-tile__value small{font-size:var(--fs-micro);font-weight:500;color:var(--label-3)}
+.res-tile--warn .res-tile__value{color:var(--warn-ink)}
+.res-tile--danger .res-tile__value{color:var(--danger-ink)}
+.res-tile__sub{display:flex;gap:8px;min-width:0;overflow:hidden;font-size:var(--fs-micro);line-height:14px;color:var(--label-3);white-space:nowrap;text-overflow:ellipsis}
+.legend{display:inline-flex;align-items:center}
+.chart{position:relative;height:36px;margin-top:3px}
+.chart__svg{display:block;width:100%;height:100%;overflow:visible}
+.chart__grid{stroke:var(--chart-grid);stroke-width:1;vector-effect:non-scaling-stroke}
+.chart__line{fill:none;stroke-width:2;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}
+.chart__line--normal{stroke:var(--lv-normal)}
+.chart__line--mid{stroke:var(--lv-mid)}
+.chart__line--warn{stroke:var(--lv-warn)}
+.chart__line--danger{stroke:var(--lv-danger)}
+.chart__line--thin{stroke-width:1.1;opacity:.85}
+.chart__area{stroke:none;opacity:.12}
+.chart__area--normal{fill:var(--lv-normal)}
+.chart__area--mid{fill:var(--lv-mid)}
+.chart__area--warn{fill:var(--lv-warn)}
+.chart__area--danger{fill:var(--lv-danger)}
+.chart__cross{stroke:var(--label-3);stroke-width:1;vector-effect:non-scaling-stroke}
+.chart__tip{position:absolute;bottom:calc(100% + 4px);z-index:3;transform:translateX(-50%);display:grid;gap:1px;padding:5px 7px;border-radius:6px;font-size:var(--fs-micro);line-height:14px;color:var(--label);white-space:nowrap;background:var(--material-solid);box-shadow:var(--shadow-float);pointer-events:none;font-variant-numeric:tabular-nums}
+.res-tile:nth-child(-n+2) .chart__tip{top:calc(100% + 4px);bottom:auto}
+.chart__key{display:inline-block;width:9px;height:2px;margin-right:4px;border-radius:1px;vertical-align:middle}
+.chart__key--normal{background:var(--lv-normal)}
+.chart__key--mid{background:var(--lv-mid)}
+.chart__key--warn{background:var(--lv-warn)}
+.chart__key--danger{background:var(--lv-danger)}
+.chart__key--thin{height:1px;opacity:.85}
+.level-legend{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:4px 10px;padding-top:4px;font-size:var(--fs-micro);color:var(--label-3)}
+.level-legend span{display:inline-flex;align-items:center}
+.res-tile--warn .res-tile__value{color:var(--warn-ink)}
+.res-tile--danger .res-tile__value{color:var(--danger-ink)}
+.chart--empty{display:grid;place-items:center;font-size:var(--fs-micro);color:var(--label-3)}
+.chart--compact{width:72px;height:14px;margin:0}
+.chart--compact.chart--empty span{display:none}
+.chart--compact.chart--empty{border-bottom:1px solid var(--track);height:8px}
+.wc-row .wc-sub:has(.chart){display:block}
+.wc-sep{grid-column:1 / -1;height:0;border-top:.5px solid var(--separator);margin-block:1px}
