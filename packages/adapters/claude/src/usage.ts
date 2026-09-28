@@ -3,6 +3,7 @@
  * Endpoint: GET https://api.anthropic.com/api/oauth/usage
  */
 
+import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -20,6 +21,11 @@ const USAGE_URL = 'https://api.anthropic.com/api/oauth/usage';
 const API_TIMEOUT_MS = 10_000;
 /** A cache younger than this is returned as a fresh 'ok' without calling the API. */
 export const CLAUDE_CACHE_TTL_MS = 60_000;
+/**
+ * Recheck interval while signed out. Claude Code refreshes its own token, so the fix
+ * usually lands without the user doing anything here; the local lookup is cheap.
+ */
+export const CLAUDE_AUTH_RECHECK_MS = 60_000;
 const CACHE_DIR = path.join(os.homedir(), '.config', 'gary-ai-platform-monitor');
 const CACHE_FILE = path.join(CACHE_DIR, 'claude-usage-cache.json');
 
@@ -46,12 +52,17 @@ export interface ClaudeUsageDeps {
   loadCache?: () => ClaudeUsageCache | null;
   saveCache?: (entry: ClaudeUsageCache) => void;
   now?: () => number;
+  /** Fingerprint of the token the API last rejected (never the token itself). */
+  rejected?: { token: string | null };
 }
+
+const lastRejected: { token: string | null } = { token: null };
 
 /**
  * Status mapping:
  *   200            → ok (observedAt = now, cache saved)
- *   401/403        → auth_required + errorKind 'auth' (cached windows kept, observedAt = cache time)
+ *   401/403        → auth_required + errorKind 'auth' (cached windows kept, observedAt = cache time);
+ *                    that token is not sent again, a refreshed one is tried on the next recheck
  *   429            → stale (cache) / error (no cache), errorKind 'rate_limited', retryAfterMs
  *   other failures → stale (cache) / error (no cache) with the classified errorKind
  * Cached data is only reported as 'ok' while younger than CLAUDE_CACHE_TTL_MS.
@@ -61,6 +72,7 @@ export async function fetchClaudeUsage(deps: ClaudeUsageDeps = {}): Promise<Usag
   const load = deps.loadCache ?? loadCache;
   const save = deps.saveCache ?? saveCache;
   const lookup = deps.lookupToken ?? (() => lookupClaudeAccessToken());
+  const rejected = deps.rejected ?? lastRejected;
 
   const cached = load();
   if (cached) {
@@ -72,10 +84,20 @@ export async function fetchClaudeUsage(deps: ClaudeUsageDeps = {}): Promise<Usag
   if (auth.token === null) {
     return fromCache(cached, 'auth_required', now(), {
       errorKind: 'auth',
+      retryAfterMs: CLAUDE_AUTH_RECHECK_MS,
       errorMessage:
         auth.reason === 'expired'
           ? 'Claude Code OAuth token expired — run Claude Code once to refresh it'
           : 'Claude Code OAuth credentials not found — sign in with Claude Code',
+    });
+  }
+
+  const fingerprint = createHash('sha256').update(auth.token).digest('hex');
+  if (fingerprint === rejected.token) {
+    return fromCache(cached, 'auth_required', now(), {
+      errorKind: 'auth',
+      retryAfterMs: CLAUDE_AUTH_RECHECK_MS,
+      errorMessage: 'Claude OAuth token rejected — run Claude Code to sign in again',
     });
   }
 
@@ -94,8 +116,10 @@ export async function fetchClaudeUsage(deps: ClaudeUsageDeps = {}): Promise<Usag
 
   if (!res.ok) {
     if (res.errorKind === 'auth') {
+      rejected.token = fingerprint;
       return fromCache(cached, 'auth_required', now(), {
         errorKind: 'auth',
+        retryAfterMs: CLAUDE_AUTH_RECHECK_MS,
         errorMessage: `Claude OAuth token rejected (HTTP ${res.status ?? '?'}) — run Claude Code to sign in again`,
       });
     }

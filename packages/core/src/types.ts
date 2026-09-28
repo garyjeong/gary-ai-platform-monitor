@@ -99,7 +99,10 @@ export interface UsageResult {
   /** Human-readable failure reason. Never include secrets (see scrubSecrets). */
   errorMessage?: string;
   errorKind?: FetchErrorKind;
-  /** Server-requested wait before the next attempt (parsed Retry-After), ms. */
+  /**
+   * Server-requested wait before the next attempt (parsed Retry-After), ms. On an auth
+   * failure it is the adapter's own recheck interval and replaces the auth backoff.
+   */
   retryAfterMs?: number;
   /** Non-error extra info for display (plan tier, notes). */
   note?: string;

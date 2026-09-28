@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  CLAUDE_AUTH_RECHECK_MS,
   CLAUDE_CACHE_TTL_MS,
   fetchClaudeUsage,
   mapOAuthUsageToWindows,
@@ -27,6 +28,7 @@ function deps(opts: {
   const state = { saved: [] as ClaudeUsageCache[], calls: 0 };
   return Object.assign(state, {
     now: () => NOW,
+    rejected: { token: null },
     loadCache: () => opts.cache ?? null,
     saveCache: (e: ClaudeUsageCache) => void state.saved.push(e),
     lookupToken: async () =>
@@ -72,9 +74,39 @@ describe('fetchClaudeUsage status transitions', () => {
     const r = await fetchClaudeUsage(d);
     assert.equal(r.status, 'auth_required');
     assert.equal(r.errorKind, 'auth');
+    assert.equal(r.retryAfterMs, CLAUDE_AUTH_RECHECK_MS);
     assert.equal(r.windows.length, 2);
     assert.equal(r.observedAt, CACHE.timestamp);
     assert.equal(d.saved.length, 0);
+  });
+
+  it('does not resend a rejected token, but tries a refreshed one', async () => {
+    let token = TOKEN;
+    let status = 401;
+    let calls = 0;
+    const d: ClaudeUsageDeps = {
+      now: () => NOW,
+      rejected: { token: null },
+      loadCache: () => null,
+      saveCache: () => undefined,
+      lookupToken: async () => ({ token }),
+      fetchImpl: (async () => {
+        calls++;
+        return new Response(JSON.stringify({ five_hour: { utilization: 5, resets_at: null } }), { status });
+      }) as typeof fetch,
+    };
+    assert.equal((await fetchClaudeUsage(d)).status, 'auth_required');
+    assert.equal(calls, 1);
+
+    const again = await fetchClaudeUsage(d);
+    assert.equal(again.status, 'auth_required');
+    assert.equal(again.retryAfterMs, CLAUDE_AUTH_RECHECK_MS);
+    assert.equal(calls, 1, 'same token must not be sent again');
+
+    token = 'sk-ant-oat01-' + 'B'.repeat(40); // Claude Code refreshed it
+    status = 200;
+    assert.equal((await fetchClaudeUsage(d)).status, 'ok');
+    assert.equal(calls, 2);
   });
 
   it('429 with Retry-After → stale (cache) / error (no cache), rate_limited + retryAfterMs', async () => {
@@ -122,6 +154,7 @@ describe('fetchClaudeUsage status transitions', () => {
     assert.equal(r.errorKind, 'auth');
     assert.equal(r.observedAt, CACHE.timestamp);
     assert.match(r.errorMessage ?? '', /expired/);
+    assert.equal(r.retryAfterMs, CLAUDE_AUTH_RECHECK_MS);
     assert.equal(d.calls, 0);
   });
 });

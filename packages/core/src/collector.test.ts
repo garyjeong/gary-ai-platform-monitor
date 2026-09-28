@@ -83,6 +83,29 @@ describe('Collector usage stream', () => {
     assert.equal(calls, 2);
   });
 
+  it('waits authRetryMs after an auth failure unless the adapter asks to recheck sooner', async () => {
+    let t = 7_000_000;
+    let calls = 0;
+    const authFail = (retryAfterMs?: number) => (): Promise<UsageResult> => {
+      calls += 1;
+      return Promise.resolve({
+        providerId: 'p', status: 'auth_required', updatedAt: t, windows: [], errorKind: 'auth', retryAfterMs,
+      });
+    };
+    const slow = new Collector({ adapters: [adapter('p', authFail())], config: monitored(['p']), now: () => t });
+    await slow.refreshNow({ detect: true });
+    t += 60_000;
+    await slow.refreshNow();
+    assert.equal(calls, 1, 'default auth backoff holds');
+
+    calls = 0;
+    const quick = new Collector({ adapters: [adapter('p', authFail(60_000))], config: monitored(['p']), now: () => t });
+    await quick.refreshNow({ detect: true });
+    t += 60_000;
+    await quick.refreshNow();
+    assert.equal(calls, 2, 'adapter recheck interval replaces the auth backoff');
+  });
+
   it('manual refresh with staleAfterMs skips fresh streams', async () => {
     let t = 0;
     let calls = 0;

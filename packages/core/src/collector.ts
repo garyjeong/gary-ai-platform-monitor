@@ -56,7 +56,7 @@ export interface CollectorPolicy {
   callDeadlineMs: number;
   backoffBaseMs: number;
   backoffMaxMs: number;
-  /** Retry delay after an auth failure (user must log in again). */
+  /** Retry delay after an auth failure (user must log in again), unless the adapter sets retryAfterMs. */
   authRetryMs: number;
   /** Max parallel adapter/health calls. */
   concurrency: number;
@@ -449,7 +449,7 @@ export class Collector {
         state.lastErrorKind = kind;
         const wait =
           kind === 'auth'
-            ? this.policy.authRetryMs
+            ? (result.retryAfterMs ?? this.policy.authRetryMs)
             : Math.max(result.retryAfterMs ?? 0, this.backoffMs(state.consecutiveFailures));
         state.nextAt = now + wait;
         entry.usage = mergeWithLastGood(result, entry.lastGoodUsage, kind);
