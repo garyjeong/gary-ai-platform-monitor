@@ -17,6 +17,12 @@ cask "gary-ai-platform-monitor" do
 
   app "AI Platform Monitor.app"
 
+  # Unsigned build: macOS reports a quarantined copy as "damaged" and refuses to open it.
+  postflight_steps do
+    run "/usr/bin/xattr",
+        args: ["-dr", "com.apple.quarantine", "{{appdir}}/AI Platform Monitor.app"]
+  end
+
   zap trash: [
     "~/.config/gary-ai-platform-monitor",
     "~/Library/Application Support/@gary-ai-platform-monitor",

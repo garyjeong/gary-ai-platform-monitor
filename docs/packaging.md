@@ -63,6 +63,8 @@ brew install --cask gary-ai-platform-monitor
 
 Mirror of the cask also lives in this repo at `homebrew/Casks/gary-ai-platform-monitor.rb` (keep in sync with the tap).
 
+The cask's `postflight_steps` removes `com.apple.quarantine` after install. The build is unsigned (`identity: null`), and macOS reports a quarantined unsigned copy as "damaged" instead of offering to open it — this hit the login-item launch after a reboot following `brew upgrade`. Drop the step once the build is signed and notarized.
+
 **v0.6.0 (arm64, GitHub Release asset)**
 
 | Field | Value |
