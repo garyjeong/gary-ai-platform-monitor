@@ -109,8 +109,8 @@ bash scripts/uninstall-login-item.sh
 
 See [docs/packaging.md](./docs/packaging.md).
 
-**v0.6.0 release (unsigned arm64 DMG):**  
-https://github.com/garyjeong/gary-ai-platform-monitor/releases/tag/v0.6.0
+**v0.6.1 release (unsigned arm64 DMG):**  
+https://github.com/garyjeong/gary-ai-platform-monitor/releases/tag/v0.6.1
 
 ```bash
 # Homebrew personal tap

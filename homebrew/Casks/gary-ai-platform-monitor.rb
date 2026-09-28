@@ -1,6 +1,6 @@
 cask "gary-ai-platform-monitor" do
-  version "0.6.0"
-  sha256 "e19941343c1d2154def9eb3d5053e1e41be099c888d8292f3155419685c46fab"
+  version "0.6.1"
+  sha256 "cdd33b395c5058c966f2c0b2e74553133b6cd96905012e183081ad2d47f02779"
 
   url "https://github.com/garyjeong/gary-ai-platform-monitor/releases/download/v#{version}/AI-Platform-Monitor-#{version}-arm64.dmg"
   name "AI Platform Monitor"

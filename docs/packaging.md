@@ -46,8 +46,8 @@ Update `apps/menubar/package.json` `build.mac.notarize` / identity when ready.
 ## GitHub Releases
 
 ```bash
-git tag v0.6.0
-git push origin v0.6.0
+git tag v0.6.1
+git push origin v0.6.1
 ```
 
 `.github/workflows/release.yml` builds an unsigned DMG on `macos-latest` and attaches it to the release.
@@ -65,12 +65,12 @@ Mirror of the cask also lives in this repo at `homebrew/Casks/gary-ai-platform-m
 
 The cask's `postflight_steps` removes `com.apple.quarantine` after install. The build is unsigned (`identity: null`), and macOS reports a quarantined unsigned copy as "damaged" instead of offering to open it — this hit the login-item launch after a reboot following `brew upgrade`. Drop the step once the build is signed and notarized.
 
-**v0.6.0 (arm64, GitHub Release asset)**
+**v0.6.1 (arm64, GitHub Release asset)**
 
 | Field | Value |
 |-------|--------|
-| URL | https://github.com/garyjeong/gary-ai-platform-monitor/releases/download/v0.6.0/AI-Platform-Monitor-0.6.0-arm64.dmg |
-| sha256 | `e19941343c1d2154def9eb3d5053e1e41be099c888d8292f3155419685c46fab` |
+| URL | https://github.com/garyjeong/gary-ai-platform-monitor/releases/download/v0.6.1/AI-Platform-Monitor-0.6.1-arm64.dmg |
+| sha256 | `cdd33b395c5058c966f2c0b2e74553133b6cd96905012e183081ad2d47f02779` |
 
 Direct install without tap (from this clone):
 
