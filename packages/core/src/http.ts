@@ -1,6 +1,7 @@
 /**
  * Shared HTTP helpers for adapters and health checks.
- * - Every request has a timeout (AbortSignal.timeout).
+ * - Every request has a timeout. It uses a regular (ref'd) timer rather than AbortSignal.timeout,
+ *   whose unref'd timer lets the event loop end while a request is still pending.
  * - Failures are classified (FetchErrorKind) so the scheduler can back off correctly.
  * - Error text is scrubbed so tokens never reach the snapshot / UI.
  */
@@ -51,14 +52,33 @@ async function request<T>(
   read: (res: Response) => Promise<T>
 ): Promise<HttpResult<T>> {
   const { timeoutMs = DEFAULT_TIMEOUT_MS, fetchImpl = fetch, ...init } = options;
+  const controller = new AbortController();
+  const timer = setTimeout(
+    () => controller.abort(new DOMException(`timed out after ${timeoutMs}ms`, 'TimeoutError')),
+    timeoutMs
+  );
+  try {
+    return await send(url, init, controller.signal, fetchImpl, read);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function send<T>(
+  url: string,
+  init: RequestInit,
+  signal: AbortSignal,
+  fetchImpl: typeof fetch,
+  read: (res: Response) => Promise<T>
+): Promise<HttpResult<T>> {
   let res: Response;
   try {
-    res = await fetchImpl(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+    res = await fetchImpl(url, { ...init, signal });
   } catch (err) {
     return {
       ok: false,
-      errorKind: classifyError(err),
-      errorMessage: scrubSecrets(errorText(err)),
+      errorKind: classifyError(signal.aborted ? signal.reason : err),
+      errorMessage: scrubSecrets(errorText(signal.aborted ? signal.reason : err)),
     };
   }
 
