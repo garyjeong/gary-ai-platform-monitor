@@ -46,8 +46,8 @@ Update `apps/menubar/package.json` `build.mac.notarize` / identity when ready.
 ## GitHub Releases
 
 ```bash
-git tag v0.3.0
-git push origin v0.3.0
+git tag v0.6.0
+git push origin v0.6.0
 ```
 
 `.github/workflows/release.yml` builds an unsigned DMG on `macos-latest` and attaches it to the release.
@@ -63,12 +63,12 @@ brew install --cask gary-ai-platform-monitor
 
 Mirror of the cask also lives in this repo at `homebrew/Casks/gary-ai-platform-monitor.rb` (keep in sync with the tap).
 
-**v0.3.0 (arm64, GitHub Release asset)**
+**v0.6.0 (arm64, GitHub Release asset)**
 
 | Field | Value |
 |-------|--------|
-| URL | https://github.com/garyjeong/gary-ai-platform-monitor/releases/download/v0.3.0/AI-Platform-Monitor-0.3.0-arm64.dmg |
-| sha256 | `3c42447074c56ff0f1d9e9e15611c328086564f4efcdc0a2889c2e06e16eaa2c` |
+| URL | https://github.com/garyjeong/gary-ai-platform-monitor/releases/download/v0.6.0/AI-Platform-Monitor-0.6.0-arm64.dmg |
+| sha256 | `e19941343c1d2154def9eb3d5053e1e41be099c888d8292f3155419685c46fab` |
 
 Direct install without tap (from this clone):
 
