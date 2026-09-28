@@ -10,7 +10,7 @@ Automatically discovers local logins, shows usage as **percent** when available,
 |---------|-------------|
 | **Auto-discover** | 15 providers: Claude, Codex, Grok, Gemini, OpenRouter, Cursor, Copilot, Ollama, OpenCode, ChatGPT Desktop, Warp, Factory, Amp, Kiro, Kilo |
 | **Monitor toggles** | Enable/disable each platform in Settings |
-| **Floating widget** | One compact always-on-top panel: up to 3 platforms + this Mac's resources, snaps to screen edges, remembers its place |
+| **Desktop widget** | One compact panel pinned to the wallpaper, behind every window: up to 3 platforms + this Mac's resources, snaps to screen edges, remembers its place |
 | **This Mac** | CPU, memory (pressure, swap), shared memory, network throughput — sampled only while the popover/widget is visible |
 | **Pace & freshness** | Even-pace marker, “runs out before reset” warning from the recent rate, per-platform “n분 전 확인” |
 | **Usage %** | Claude · Codex · Gemini · OpenRouter; Grok via browser cookie when available |

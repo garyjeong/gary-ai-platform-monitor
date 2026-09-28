@@ -1,11 +1,16 @@
 /**
- * Floating desktop widget: a non-activating panel that floats above normal windows,
- * joins every Space, snaps to screen edges and remembers its place per display.
+ * Desktop widget: a non-activating panel on the wallpaper, behind every app window.
+ * Joins every Space, snaps to screen edges and remembers its place per display.
  */
 
 import { BrowserWindow, screen, type Rectangle } from 'electron';
 import type { AppConfig, WidgetPosition } from '@gary-ai-platform-monitor/core';
 
+/**
+ * One above kCGDesktopIconWindowLevel: over the wallpaper and Finder's desktop icons (so it
+ * still takes clicks), under every app window. Electron adds this to NSNormalWindowLevel (0).
+ */
+const DESKTOP_LEVEL = -2147483603 + 1;
 /** Distance at which a dragged widget snaps to a screen edge. */
 const SNAP_PX = 24;
 /** Gap kept between a snapped widget and the screen edge. */
@@ -138,7 +143,8 @@ export class WidgetWindow {
     });
     this.win = w;
     this.placed = false;
-    w.setAlwaysOnTop(true, 'floating');
+    w.setAlwaysOnTop(true, 'normal', DESKTOP_LEVEL);
+    w.setVisibleOnAllWorkspaces(true, { skipTransformProcessType: true });
     this.applyFlags();
     w.loadFile(this.host.htmlPath);
     // Fallback if the renderer never reports a size.
@@ -160,10 +166,6 @@ export class WidgetWindow {
     const w = this.window;
     if (!w) return;
     const wc = this.host.getConfig().widget;
-    w.setVisibleOnAllWorkspaces(true, {
-      visibleOnFullScreen: wc.overFullScreen,
-      skipTransformProcessType: true,
-    });
     w.setContentProtection(wc.hideInScreenShare);
     w.setOpacity(wc.opacity / 100);
   }

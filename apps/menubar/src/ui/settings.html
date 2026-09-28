@@ -41,8 +41,11 @@
 
       <h2 class="group-title">위젯</h2>
       <div class="group">
-        <div class="grow">
-          <div class="grow__text"><label class="grow__label" for="set-widget">위젯 표시</label></div>
+        <div class="grow grow--top">
+          <div class="grow__text">
+            <label class="grow__label" for="set-widget">위젯 표시</label>
+            <p class="grow__desc">다른 창 뒤, 바탕화면 위에 놓입니다.</p>
+          </div>
           <input id="set-widget" type="checkbox" role="switch" class="switch" />
         </div>
         <div class="grow">
@@ -55,13 +58,6 @@
         <div class="grow grow--nowrap">
           <div class="grow__text"><label class="grow__label" for="set-opacity">투명도</label></div>
           <span class="mrange"><span>투명</span><input id="set-opacity" type="range" min="40" max="100" step="5" /><span>불투명</span><output id="opacity-out" for="set-opacity"></output></span>
-        </div>
-        <div class="grow grow--top">
-          <div class="grow__text">
-            <label class="grow__label" for="set-fullscreen">전체 화면 앱 위에 표시</label>
-            <p class="grow__desc">끄면 전체 화면으로 쓰는 앱 위에서는 위젯이 보이지 않습니다.</p>
-          </div>
-          <input id="set-fullscreen" type="checkbox" role="switch" class="switch" />
         </div>
       </div>
 

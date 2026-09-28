@@ -108,13 +108,16 @@ describe('setProviderMonitor batch semantics', () => {
 describe('widget + resources config', () => {
   it('drops removed widget options and keeps valid ones', () => {
     const merged = mergeConfig(DEFAULT_CONFIG, {
-      widget: { visible: true, pinned: ['a', 'b', 'c', 'd'], opacity: 10, size: 'medium', clickThrough: true } as never,
+      widget: {
+        visible: true, pinned: ['a', 'b', 'c', 'd'], opacity: 10, size: 'medium', clickThrough: true, overFullScreen: true,
+      } as never,
     });
     assert.equal(merged.widget.visible, true);
     assert.deepEqual(merged.widget.pinned, ['a', 'b', 'c']);
     assert.equal(merged.widget.opacity, 40);
     assert.equal('size' in merged.widget, false);
     assert.equal('clickThrough' in merged.widget, false);
+    assert.equal('overFullScreen' in merged.widget, false);
   });
 
   it('resources default to shown', () => {

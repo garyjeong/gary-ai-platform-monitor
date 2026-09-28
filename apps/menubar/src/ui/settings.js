@@ -65,7 +65,6 @@
     const opacity = $('#set-opacity');
     if (document.activeElement !== opacity) opacity.value = String(w.opacity ?? 90);
     $('#opacity-out').textContent = `불투명 ${opacity.value}%`;
-    setChecked($('#set-fullscreen'), w.overFullScreen);
     setChecked($('#set-share'), w.hideInScreenShare);
 
     const on = snap.providers.filter((p) => UI.isOn(snap, p.meta.id));
@@ -123,7 +122,6 @@
       else if (t.id === 'set-widget') void act(window.gaiPm.setWidget({ visible: t.checked }));
       else if (t.id === 'set-res-popover') void act(window.gaiPm.setResources({ showInPopover: t.checked }));
       else if (t.id === 'set-res-widget') void act(window.gaiPm.setResources({ showInWidget: t.checked }));
-      else if (t.id === 'set-fullscreen') void act(window.gaiPm.setWidget({ overFullScreen: t.checked }));
       else if (t.id === 'set-share') void act(window.gaiPm.setWidget({ hideInScreenShare: t.checked }));
       else if (t.id === 'set-opacity') void act(window.gaiPm.setWidget({ opacity: Number(t.value) }));
     });

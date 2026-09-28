@@ -1,5 +1,5 @@
 /**
- * Electron main — tray (icon only) + status popover + Settings + floating widget.
+ * Electron main — tray (icon only) + status popover + Settings + desktop widget.
  *
  * - All fetching runs in a utility process (collector-host.ts). Main never blocks on
  *   Keychain / file / network work and restarts the collector if it dies.
@@ -560,7 +560,7 @@ function setupAppMenu(): void {
 function validateWidgetPatch(raw: unknown): Partial<WidgetConfig> {
   const p = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
   const out: Partial<WidgetConfig> = {};
-  for (const key of ['visible', 'overFullScreen', 'hideInScreenShare'] as const) {
+  for (const key of ['visible', 'hideInScreenShare'] as const) {
     if (typeof p[key] === 'boolean') out[key] = p[key];
   }
   if (typeof p.opacity === 'number' && Number.isFinite(p.opacity)) out.opacity = p.opacity;

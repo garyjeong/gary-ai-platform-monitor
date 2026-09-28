@@ -185,15 +185,13 @@ export interface WidgetPosition {
   y: number;
 }
 
-/** Floating desktop widget (Electron panel window). */
+/** Desktop widget (Electron panel window on the wallpaper, behind every app window). */
 export interface WidgetConfig {
   visible: boolean;
   /** Up to 3 provider ids shown in the widget. Empty = first monitored providers. */
   pinned: string[];
   /** Window opacity in percent (40–100). */
   opacity: number;
-  /** Also float above other apps' full-screen spaces. */
-  overFullScreen: boolean;
   /** Ask macOS to exclude the widget from screen capture (not honored by every capturer). */
   hideInScreenShare: boolean;
   position?: WidgetPosition;
@@ -247,7 +245,6 @@ export const DEFAULT_CONFIG: AppConfig = {
     visible: false,
     pinned: [],
     opacity: 90,
-    overFullScreen: false,
     hideInScreenShare: false,
   },
   resources: {

@@ -208,7 +208,6 @@ export function normalizeWidget(raw?: Partial<WidgetConfig> | null): WidgetConfi
     visible: typeof raw?.visible === 'boolean' ? raw.visible : d.visible,
     pinned,
     opacity: Math.round(Math.min(100, Math.max(40, opacity))),
-    overFullScreen: Boolean(raw?.overFullScreen),
     hideInScreenShare: Boolean(raw?.hideInScreenShare),
     ...(position ? { position } : {}),
   };

@@ -1,4 +1,4 @@
-/* Shared renderer for the popover, settings and floating widget.
+/* Shared renderer for the popover, settings and desktop widget.
  * Classic script: exposes window.GaiUI. Markup mirrors the v0.5 design mockup (components.css). */
 (function () {
   'use strict';

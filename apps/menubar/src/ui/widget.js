@@ -1,4 +1,4 @@
-/* Floating widget: one size — this Mac's resources, then pinned platforms. */
+/* Desktop widget: one size — this Mac's resources, then pinned platforms. */
 (function () {
   'use strict';
   const UI = window.GaiUI;
