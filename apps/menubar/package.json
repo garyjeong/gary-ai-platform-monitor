@@ -1,6 +1,6 @@
 {
   "name": "@gary-ai-platform-monitor/menubar",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "private": true,
   "description": "macOS menu bar app for AI platform usage + health",
   "author": "garyjeong",
