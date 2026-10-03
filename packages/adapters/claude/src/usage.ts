@@ -87,8 +87,8 @@ export async function fetchClaudeUsage(deps: ClaudeUsageDeps = {}): Promise<Usag
       retryAfterMs: CLAUDE_AUTH_RECHECK_MS,
       errorMessage:
         auth.reason === 'expired'
-          ? 'Claude Code OAuth token expired — run Claude Code once to refresh it'
-          : 'Claude Code OAuth credentials not found — sign in with Claude Code',
+          ? 'Claude usage access token expired — waiting for Claude Code to refresh it'
+          : 'Claude usage credentials unavailable — waiting for updated credentials',
     });
   }
 
@@ -97,7 +97,7 @@ export async function fetchClaudeUsage(deps: ClaudeUsageDeps = {}): Promise<Usag
     return fromCache(cached, 'auth_required', now(), {
       errorKind: 'auth',
       retryAfterMs: CLAUDE_AUTH_RECHECK_MS,
-      errorMessage: 'Claude OAuth token rejected — run Claude Code to sign in again',
+      errorMessage: 'Claude usage API authentication rejected — waiting for updated credentials',
     });
   }
 
@@ -120,7 +120,7 @@ export async function fetchClaudeUsage(deps: ClaudeUsageDeps = {}): Promise<Usag
       return fromCache(cached, 'auth_required', now(), {
         errorKind: 'auth',
         retryAfterMs: CLAUDE_AUTH_RECHECK_MS,
-        errorMessage: `Claude OAuth token rejected (HTTP ${res.status ?? '?'}) — run Claude Code to sign in again`,
+        errorMessage: `Claude usage API authentication rejected (HTTP ${res.status ?? '?'}) — waiting for updated credentials`,
       });
     }
     return fromCache(cached, cached ? 'stale' : 'error', now(), {

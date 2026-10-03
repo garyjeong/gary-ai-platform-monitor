@@ -42,6 +42,16 @@ describe('providerView status', () => {
     assert.equal(v.windows.length, 1);
   });
 
+  it('Claude usage auth failures never ask the user to log in on any surface', () => {
+    const v = UI.providerView(provider('claude', { ...ok([]), status: 'auth_required' }), NOW);
+    for (const html of [UI.providerBlock(v, NOW), UI.chipFor(v, true, NOW), UI.compactRow(v, NOW)]) {
+      assert.match(html, /사용량 인증/);
+      assert.doesNotMatch(html, /로그인/);
+    }
+    const other = UI.providerView(provider('codex', { ...ok([]), status: 'auth_required' }), NOW);
+    assert.match(UI.providerBlock(other, NOW), /다시 로그인 필요/);
+  });
+
   it('merges rolling tokens + usd into one row', () => {
     const v = UI.providerView(
       provider('grok', ok([

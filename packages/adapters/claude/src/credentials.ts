@@ -46,13 +46,10 @@ export async function hasClaudeKeychainItem(): Promise<boolean> {
 
 export async function lookupClaudeAccessToken(now = Date.now()): Promise<ClaudeTokenLookup> {
   const fromKeychain = await readKeychain(now);
-  if (fromKeychain.token) return fromKeychain;
-  const fromFile = readFile(os.homedir(), now);
-  if (fromFile.token) return fromFile;
-  const expired =
-    (fromKeychain.token === null && fromKeychain.reason === 'expired') ||
-    (fromFile.token === null && fromFile.reason === 'expired');
-  return { token: null, reason: expired ? 'expired' : 'missing' };
+  // An expired Keychain entry is authoritative; an old file may belong to a
+  // previous login and must not replace it.
+  if (fromKeychain.token !== null || fromKeychain.reason === 'expired') return fromKeychain;
+  return readFile(os.homedir(), now);
 }
 
 export async function getClaudeAccessToken(): Promise<string | null> {
@@ -90,6 +87,9 @@ function parseToken(data: CredentialsFile, now: number): ClaudeTokenLookup {
   const accessToken = data.claudeAiOauth?.accessToken;
   if (!accessToken) return { token: null, reason: 'missing' };
   const expiresAt = data.claudeAiOauth?.expiresAt;
-  if (expiresAt != null && expiresAt <= now) return { token: null, reason: 'expired' };
+  if (typeof expiresAt !== 'number' || !Number.isFinite(expiresAt)) {
+    return { token: null, reason: 'missing' };
+  }
+  if (expiresAt <= now) return { token: null, reason: 'expired' };
   return { token: accessToken };
 }

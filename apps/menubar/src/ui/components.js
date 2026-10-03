@@ -100,7 +100,7 @@
 
   // ── view model ──────────────────────────────────────────────────────
   const AUTH_HINT = {
-    claude: 'Claude Code 를 한 번 실행해 다시 로그인',
+    claude: '사용량 조회용 인증을 기다리는 중입니다. Claude Code에서 토큰이 갱신되면 자동으로 다시 확인합니다.',
     codex: '터미널에서 <code>codex login</code>',
     gemini: '터미널에서 <code>gemini</code> 실행 후 로그인',
     copilot: '터미널에서 <code>gh auth login</code>',
@@ -306,7 +306,7 @@
     const stale = v.status === 'stale';
     let body;
     if (v.status === 'auth') {
-      body = `<div class="provider-block__note">${chip('auth')}<span>${v.hint || esc(v.error)}</span></div>`
+      body = `<div class="provider-block__note">${chip('auth', v.id === 'claude' ? '사용량 인증 확인 필요' : '')}<span>${v.hint || esc(v.error)}</span></div>`
         + (v.windows.length ? v.windows.map((w) => quotaRow(w, now, true)).join('') : '');
     } else if (v.status === 'missing') {
       body = `<div class="provider-block__note">${chip('off', '감지되지 않음')}<span>이 Mac 에서 로그인 흔적을 찾지 못했습니다</span></div>`;
@@ -335,7 +335,7 @@
 
   function chipFor(v, on, now) {
     if (!on) return v.status === 'missing' ? '' : chip('off');
-    if (v.status === 'auth') return chip('auth');
+    if (v.status === 'auth') return chip('auth', v.id === 'claude' ? '사용량 인증 확인 필요' : '');
     if (v.status === 'stale') return chip('stale');
     if (v.status === 'failed') return chip('failed');
     const w = primaryWindow(v, now);
@@ -352,7 +352,7 @@
   function compactRow(v, now) {
     if (v.status === 'auth') {
       const retry = v.retryAt && v.retryAt > now ? `${fmtDur(v.retryAt - now)} 후 재시도` : '';
-      return `<div class="wc-row wc-row--auth"><span class="wc-glyph">${icon('key')}</span><span class="wc-name">${esc(v.name)}</span><span class="wc-val">로그인 필요</span><span class="wc-sub">${retry}</span></div>`;
+      return `<div class="wc-row wc-row--auth"><span class="wc-glyph">${icon('key')}</span><span class="wc-name">${esc(v.name)}</span><span class="wc-val">${v.id === 'claude' ? '사용량 인증 대기' : '로그인 필요'}</span><span class="wc-sub">${retry}</span></div>`;
     }
     const w = primaryWindow(v, now);
     if (!w) {

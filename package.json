@@ -1,6 +1,6 @@
 {
   "name": "gary-ai-platform-monitor",
-  "version": "0.6.1",
+  "version": "0.6.3",
   "private": true,
   "description": "macOS menu bar app that discovers local AI platform logins, monitors usage quotas as percentages, and shows official status-page health.",
   "license": "MIT",

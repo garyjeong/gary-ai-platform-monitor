@@ -78,6 +78,7 @@ describe('fetchClaudeUsage status transitions', () => {
     assert.equal(r.windows.length, 2);
     assert.equal(r.observedAt, CACHE.timestamp);
     assert.equal(d.saved.length, 0);
+    assert.doesNotMatch(r.errorMessage ?? '', /sign in|login/i);
   });
 
   it('does not resend a rejected token, but tries a refreshed one', async () => {
@@ -154,6 +155,7 @@ describe('fetchClaudeUsage status transitions', () => {
     assert.equal(r.errorKind, 'auth');
     assert.equal(r.observedAt, CACHE.timestamp);
     assert.match(r.errorMessage ?? '', /expired/);
+    assert.doesNotMatch(r.errorMessage ?? '', /sign in|login/i);
     assert.equal(r.retryAfterMs, CLAUDE_AUTH_RECHECK_MS);
     assert.equal(d.calls, 0);
   });

@@ -292,6 +292,9 @@ function sharedWebPrefs(): Electron.WebPreferences {
 
 function createStatusWindow(): BrowserWindow {
   const w = new BrowserWindow({
+    // A non-activating panel opens over the current Space without activating
+    // the app and switching to the Space containing another app window.
+    type: 'panel',
     width: POPOVER_WIDTH,
     height: 420,
     show: false,
@@ -301,12 +304,17 @@ function createStatusWindow(): BrowserWindow {
     maximizable: false,
     fullscreenable: false,
     skipTaskbar: true,
+    hiddenInMissionControl: true,
     alwaysOnTop: true,
     roundedCorners: true,
     vibrancy: 'popover',
     visualEffectState: 'active',
     backgroundColor: '#00000000',
     webPreferences: sharedWebPrefs(),
+  });
+  w.setVisibleOnAllWorkspaces(true, {
+    visibleOnFullScreen: true,
+    skipTransformProcessType: true,
   });
   w.loadFile(path.join(UI_DIR, 'index.html'));
   w.on('blur', () => {
