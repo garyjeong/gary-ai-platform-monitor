@@ -15,7 +15,11 @@ import {
   type UsageResult,
   type UsageWindow,
 } from '@gary-ai-platform-monitor/core';
-import { lookupClaudeAccessToken, type ClaudeTokenLookup } from './credentials.js';
+import {
+  lookupClaudeAccessToken,
+  refreshClaudeTokenViaCli,
+  type ClaudeTokenLookup,
+} from './credentials.js';
 
 const USAGE_URL = 'https://api.anthropic.com/api/oauth/usage';
 const API_TIMEOUT_MS = 10_000;
@@ -26,6 +30,8 @@ export const CLAUDE_CACHE_TTL_MS = 60_000;
  * usually lands without the user doing anything here; the local lookup is cheap.
  */
 export const CLAUDE_AUTH_RECHECK_MS = 60_000;
+/** Minimum gap between Claude Code CLI refresh attempts for an expired token. */
+export const CLAUDE_CLI_REFRESH_INTERVAL_MS = 15 * 60_000;
 const CACHE_DIR = path.join(os.homedir(), '.config', 'gary-ai-platform-monitor');
 const CACHE_FILE = path.join(CACHE_DIR, 'claude-usage-cache.json');
 
@@ -54,11 +60,19 @@ export interface ClaudeUsageDeps {
   now?: () => number;
   /** Fingerprint of the token the API last rejected (never the token itself). */
   rejected?: { token: string | null };
+  /** Asks Claude Code to refresh an expired token; false when no CLI is installed. */
+  refreshToken?: () => Promise<boolean>;
+  /** Epoch ms of the last refresh attempt. */
+  lastRefresh?: { at: number };
 }
 
 const lastRejected: { token: string | null } = { token: null };
+const lastCliRefresh = { at: 0 };
 
 /**
+ * An expired token is first handed to Claude Code to refresh (at most every
+ * CLAUDE_CLI_REFRESH_INTERVAL_MS), then looked up again.
+ *
  * Status mapping:
  *   200            → ok (observedAt = now, cache saved)
  *   401/403        → auth_required + errorKind 'auth' (cached windows kept, observedAt = cache time);
@@ -73,6 +87,8 @@ export async function fetchClaudeUsage(deps: ClaudeUsageDeps = {}): Promise<Usag
   const save = deps.saveCache ?? saveCache;
   const lookup = deps.lookupToken ?? (() => lookupClaudeAccessToken());
   const rejected = deps.rejected ?? lastRejected;
+  const refresh = deps.refreshToken ?? (() => refreshClaudeTokenViaCli());
+  const lastRefresh = deps.lastRefresh ?? lastCliRefresh;
 
   const cached = load();
   if (cached) {
@@ -80,15 +96,23 @@ export async function fetchClaudeUsage(deps: ClaudeUsageDeps = {}): Promise<Usag
     if (age >= 0 && age < CLAUDE_CACHE_TTL_MS) return fromCache(cached, 'ok', now());
   }
 
-  const auth = await lookup();
+  let auth = await lookup();
+  let cliMissing = false;
+  if (auth.token === null && auth.reason === 'expired' && now() - lastRefresh.at >= CLAUDE_CLI_REFRESH_INTERVAL_MS) {
+    lastRefresh.at = now();
+    if (await refresh()) auth = await lookup();
+    else cliMissing = true;
+  }
   if (auth.token === null) {
     return fromCache(cached, 'auth_required', now(), {
       errorKind: 'auth',
       retryAfterMs: CLAUDE_AUTH_RECHECK_MS,
       errorMessage:
-        auth.reason === 'expired'
-          ? 'Claude usage access token expired — waiting for Claude Code to refresh it'
-          : 'Claude usage credentials unavailable — waiting for updated credentials',
+        auth.reason !== 'expired'
+          ? 'Claude usage credentials unavailable — waiting for updated credentials'
+          : cliMissing
+            ? 'Claude usage access token expired and the Claude Code CLI was not found — run `claude` in a terminal'
+            : 'Claude usage access token expired and the automatic refresh did not succeed — run `claude` in a terminal',
     });
   }
 

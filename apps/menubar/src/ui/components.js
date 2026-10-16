@@ -100,7 +100,7 @@
 
   // ── view model ──────────────────────────────────────────────────────
   const AUTH_HINT = {
-    claude: '사용량 조회용 인증을 기다리는 중입니다. Claude Code에서 토큰이 갱신되면 자동으로 다시 확인합니다.',
+    claude: '사용량 조회 토큰이 만료돼 자동 갱신을 시도합니다. 계속되면 터미널에서 <code>claude</code>를 한 번 실행하세요.',
     codex: '터미널에서 <code>codex login</code>',
     gemini: '터미널에서 <code>gemini</code> 실행 후 로그인',
     copilot: '터미널에서 <code>gh auth login</code>',

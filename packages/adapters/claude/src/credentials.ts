@@ -22,6 +22,9 @@ interface CredentialsFile {
 
 export const CLAUDE_KEYCHAIN_SERVICE = 'Claude Code-credentials';
 const KEYCHAIN_TIMEOUT_MS = 5000;
+const CLI_REFRESH_TIMEOUT_MS = 30_000;
+/** A server name nobody configures: `mcp get` must stop at "not found". */
+const CLI_REFRESH_PROBE = '__gary-ai-platform-monitor-token-refresh__';
 
 /** Result of looking up the Claude Code OAuth access token. */
 export type ClaudeTokenLookup =
@@ -54,6 +57,38 @@ export async function lookupClaudeAccessToken(now = Date.now()): Promise<ClaudeT
 
 export async function getClaudeAccessToken(): Promise<string | null> {
   return (await lookupClaudeAccessToken()).token;
+}
+
+/**
+ * Let Claude Code refresh its own expired OAuth token. Sessions in the Claude desktop
+ * app authenticate through the app and never refresh this Keychain entry, so it stays
+ * expired until the standalone CLI runs. `claude mcp get <missing>` loads the claude.ai
+ * connector list (which refreshes the token first) and exits at "not found" before any
+ * MCP server is started. Returns false when no CLI is installed.
+ */
+export async function refreshClaudeTokenViaCli(home = os.homedir()): Promise<boolean> {
+  const bin = [
+    path.join(home, '.local', 'bin', 'claude'),
+    '/opt/homebrew/bin/claude',
+    '/usr/local/bin/claude',
+  ].find((p) => fs.existsSync(p));
+  if (!bin) return false;
+  try {
+    await execFileAsync(bin, ['mcp', 'get', CLI_REFRESH_PROBE], {
+      cwd: home,
+      timeout: CLI_REFRESH_TIMEOUT_MS,
+      // Minimal env: inherited CLAUDE_CODE_* host-auth variables would bypass the Keychain.
+      env: {
+        HOME: home,
+        USER: os.userInfo().username,
+        PATH: '/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin',
+        LANG: process.env.LANG ?? 'en_US.UTF-8',
+      },
+    });
+  } catch {
+    // exits 1 at "not found" — expected; the caller re-reads the token either way
+  }
+  return true;
 }
 
 async function readKeychain(now: number): Promise<ClaudeTokenLookup> {

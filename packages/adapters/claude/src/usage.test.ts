@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import {
   CLAUDE_AUTH_RECHECK_MS,
   CLAUDE_CACHE_TTL_MS,
+  CLAUDE_CLI_REFRESH_INTERVAL_MS,
   fetchClaudeUsage,
   mapOAuthUsageToWindows,
   type ClaudeUsageCache,
@@ -29,6 +30,8 @@ function deps(opts: {
   return Object.assign(state, {
     now: () => NOW,
     rejected: { token: null },
+    refreshToken: async () => true,
+    lastRefresh: { at: 0 },
     loadCache: () => opts.cache ?? null,
     saveCache: (e: ClaudeUsageCache) => void state.saved.push(e),
     lookupToken: async () =>
@@ -158,6 +161,57 @@ describe('fetchClaudeUsage status transitions', () => {
     assert.doesNotMatch(r.errorMessage ?? '', /sign in|login/i);
     assert.equal(r.retryAfterMs, CLAUDE_AUTH_RECHECK_MS);
     assert.equal(d.calls, 0);
+  });
+});
+
+describe('expired token refresh via Claude Code CLI', () => {
+  const ok200 = respond(200, { five_hour: { utilization: 7, resets_at: null } });
+
+  it('refreshes once, re-reads the token and fetches', async () => {
+    let token: string | null = null;
+    let refreshes = 0;
+    const d: ClaudeUsageDeps = {
+      ...deps({ fetchImpl: ok200 }),
+      lookupToken: async () => (token ? { token } : { token: null, reason: 'expired' }),
+      refreshToken: async () => {
+        refreshes++;
+        token = TOKEN;
+        return true;
+      },
+    };
+    const r = await fetchClaudeUsage(d);
+    assert.equal(refreshes, 1);
+    assert.equal(r.status, 'ok');
+  });
+
+  it('does not rerun the CLI within the interval; reruns after it', async () => {
+    let clock = NOW;
+    let refreshes = 0;
+    const d: ClaudeUsageDeps = {
+      ...deps({ token: null }),
+      now: () => clock,
+      refreshToken: async () => (refreshes++, true),
+    };
+    const first = await fetchClaudeUsage(d);
+    assert.equal(first.status, 'auth_required');
+    assert.match(first.errorMessage ?? '', /run `claude`/);
+    clock += CLAUDE_CLI_REFRESH_INTERVAL_MS - 1;
+    await fetchClaudeUsage(d);
+    assert.equal(refreshes, 1);
+    clock += 1;
+    await fetchClaudeUsage(d);
+    assert.equal(refreshes, 2);
+  });
+
+  it('missing credentials never run the CLI', async () => {
+    let refreshes = 0;
+    const d: ClaudeUsageDeps = {
+      ...deps({}),
+      lookupToken: async () => ({ token: null, reason: 'missing' }),
+      refreshToken: async () => (refreshes++, true),
+    };
+    assert.equal((await fetchClaudeUsage(d)).status, 'auth_required');
+    assert.equal(refreshes, 0);
   });
 });
 
